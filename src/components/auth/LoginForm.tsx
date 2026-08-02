@@ -70,10 +70,8 @@ export default function LoginForm() {
               marginLeft: '3px',
             }}>olly</span>
           </div>
-         
-          <div style={{ fontSize: '15px', color: '#5a5a5a', marginTop: '10px' }}>
-            
-            Welcome Back! Find your fitness partner nearby
+          <div style={{ fontSize: '15px', color: '#5a5a5a', marginTop: '16px' }}>
+           Welcome Back!Find your fitness partner nearby
           </div>
         </div>
 
@@ -220,11 +218,25 @@ export default function LoginForm() {
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
                 letterSpacing: '0.02em',
-                transition: 'transform 0.15s',
               }}
             >
               {loading ? 'Signing in…' : 'Sign in →'}
             </button>
+
+            <Link
+              href="/forgot-password"
+              style={{
+                textAlign: 'center',
+                fontSize: '13px',
+                color: '#5a5a5a',
+                textDecoration: 'none',
+                fontWeight: 500,
+                display: 'block',
+              }}
+            >
+              Forgot password?
+            </Link>
+
           </form>
         </div>
 

@@ -56,6 +56,15 @@ export default async function HomePage() {
   <a href="/schedule" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 20px', background: '#CAFF00', color: '#0d0d0d', borderRadius: '100px', fontSize: '14px', fontWeight: 800, textDecoration: 'none' }}>
     🏃 Let's go out today →
   </a>
+ <a href="/groups" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '8px 14px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', borderRadius: '100px', fontSize: '12px', fontWeight: 700, textDecoration: 'none', marginTop: '10px', marginLeft: '20px' }}>
+  👥 Create / Join Groups →
+</a>
+<a href="/ai-match" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 20px', background: '#CAFF00', color: '#0d0d0d', borderRadius: '100px', fontSize: '14px', fontWeight: 800, textDecoration: 'none', marginTop: '10px' }}>
+  ✨ AI Instant Match →
+</a>
+  <a href="/gym" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 18px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', borderRadius: '100px',    marginLeft: '50px', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
+    🏋️ I'm at the gym →
+  </a>
 </div>
 
         <div style={{ background: '#ffffff', borderRadius: '20px', padding: '20px', border: '1.5px solid #e2e2d8', marginBottom: '16px' }}>
@@ -68,7 +77,9 @@ export default async function HomePage() {
                 {a}
               </span>
             ))}
+            
           </div>
+          
         </div>
 
         <div style={{ background: '#f0ffe0', borderRadius: '20px', padding: '20px', border: '1.5px solid #a8d900' }}>
