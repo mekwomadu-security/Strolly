@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import BottomNav from '@/components/BottomNav'
 
 const days = ['Today', 'Tomorrow', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const times = ['6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM']
@@ -189,7 +190,7 @@ export default function SchedulePage() {
   const selectedActivityData = activities.find(a => a.id === selectedActivity)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f0' }}>
+    <div style={{ minHeight: '100vh', background: '#f5f5f0', paddingBottom: '80px' }}>
 
       {/* Header */}
       <div style={{ padding: '56px 24px 20px', display: 'flex', alignItems: 'center', gap: '14px', background: '#ffffff', borderBottom: '1px solid #e2e2d8' }}>
@@ -456,6 +457,7 @@ export default function SchedulePage() {
         </button>
 
       </div>
+      <BottomNav />
     </div>
   )
 }

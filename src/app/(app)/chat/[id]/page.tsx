@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import SessionBanner from '@/components/SessionBanner'
 
 interface Message {
   id: string
@@ -16,6 +17,7 @@ interface Profile {
   full_name: string
   current_activity: string
   available_time: string
+  avatar_url: string
 }
 
 export default function ChatPage() {
@@ -31,16 +33,7 @@ export default function ChatPage() {
   const [otherProfile, setOtherProfile] = useState<Profile | null>(null)
   const [conversationId, setConversationId] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  // FIX 1: moved otherProfile ref so starter message can access the profile
-  // even before the state update is reflected (closure issue)
   const otherProfileRef = useRef<Profile | null>(null)
-
-  const activityIcons: Record<string, string> = {
-    gym: '🏋️', jogging: '🏃', cycling: '🚴',
-    football: '⚽', yoga: '🧘', swimming: '🏊',
-    dog_walk: '🐕', badminton: '🏸', tennis: '🎾',
-  }
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -48,12 +41,10 @@ export default function ChatPage() {
 
   useEffect(() => {
     initChat()
-    // FIX 2: return cleanup to unsubscribe the realtime channel on unmount
     return () => {
       const supabase = createClient()
       supabase.channel(`chat-${conversationId}`).unsubscribe()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -66,19 +57,17 @@ export default function ChatPage() {
     if (!user) { router.push('/login'); return }
     setCurrentUserId(user.id)
 
-    // Get other user profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, full_name, current_activity, available_time')
+      .select('id, full_name, current_activity, available_time, avatar_url')
       .eq('id', otherId)
       .single()
 
     if (profile) {
       setOtherProfile(profile)
-      otherProfileRef.current = profile  // FIX 1: keep ref in sync
+      otherProfileRef.current = profile
     }
 
-    // Get or create conversation
     let convId = ''
     let isNew = false
 
@@ -89,7 +78,7 @@ export default function ChatPage() {
         `and(user1_id.eq.${user.id},user2_id.eq.${otherId}),` +
         `and(user1_id.eq.${otherId},user2_id.eq.${user.id})`
       )
-      .maybeSingle()  // FIX 3: maybeSingle() won't throw when no row found
+      .maybeSingle()
 
     if (existing) {
       convId = existing.id
@@ -104,7 +93,6 @@ export default function ChatPage() {
 
     setConversationId(convId)
 
-    // Load messages
     const { data: msgs } = await supabase
       .from('messages')
       .select('*')
@@ -114,8 +102,6 @@ export default function ChatPage() {
     if (msgs) setMessages(msgs)
     setLoading(false)
 
-    // FIX 1: use ref so we have the profile value in this async closure
-    // FIX 4: only send starter message on a brand-new conversation
     if (isNew && convId) {
       const activity = otherProfileRef.current?.current_activity?.replace('_', ' ') || 'work out'
       await supabase.from('messages').insert({
@@ -125,22 +111,21 @@ export default function ChatPage() {
       })
     }
 
-    // Subscribe to new messages in real time
     supabase
-  .channel(`chat-${convId}`)
-  .on(
-    'postgres_changes' as any,
-    {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'messages',
-      filter: `conversation_id=eq.${convId}`,
-    },
-    (payload: any) => {
-      setMessages(prev => [...prev, payload.new as Message])
-    }
-  )
-  .subscribe()
+      .channel(`chat-${convId}`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${convId}`,
+        },
+        (payload: any) => {
+          setMessages(prev => [...prev, payload.new as Message])
+        }
+      )
+      .subscribe()
   }
 
   async function sendMessage() {
@@ -149,8 +134,6 @@ export default function ChatPage() {
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-
-    // FIX 6: guard if user session expired mid-chat
     if (!user) { router.push('/login'); return }
 
     const { error } = await supabase.from('messages').insert({
@@ -159,7 +142,6 @@ export default function ChatPage() {
       content: newMessage.trim(),
     })
 
-    // FIX 7: only clear input on success
     if (!error) setNewMessage('')
     setSending(false)
   }
@@ -185,13 +167,28 @@ export default function ChatPage() {
           onClick={() => router.back()}
           style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f5f5f0', border: 'none', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >
-          ←  {/* FIX 8: back arrow was missing its character */}
+          ←
         </button>
-        <div style={{ width: '44px', height: '44px', borderRadius: '14px', background: '#CAFF00', color: '#0d0d0d', fontFamily: 'sans-serif', fontWeight: 800, fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #0d0d0d', flexShrink: 0 }}>
-          {initials}
+
+        {/* Avatar — real photo or initials */}
+        <div
+          onClick={() => router.push('/user/' + otherId)}
+          style={{ width: '44px', height: '44px', borderRadius: '14px', border: '2px solid #0d0d0d', flexShrink: 0, cursor: 'pointer', overflow: 'hidden' }}
+        >
+          {otherProfile?.avatar_url ? (
+            <img src={otherProfile.avatar_url} alt={otherProfile.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '16px', color: '#0d0d0d' }}>
+              {initials}
+            </div>
+          )}
         </div>
+
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: 'sans-serif', fontSize: '16px', fontWeight: 700, color: '#0d0d0d' }}>
+          <div
+            onClick={() => router.push('/user/' + otherId)}
+            style={{ fontFamily: 'sans-serif', fontSize: '16px', fontWeight: 700, color: '#0d0d0d', cursor: 'pointer' }}
+          >
             {otherProfile?.full_name || 'Loading...'}
           </div>
           <div style={{ fontSize: '11px', color: '#5a5a5a', marginTop: '2px' }}>
@@ -201,22 +198,16 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Activity bar */}
-      {otherProfile?.current_activity && (
-        <div style={{ margin: '12px 24px', background: '#CAFF00', borderRadius: '14px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-          <div style={{ fontSize: '20px' }}>
-            {activityIcons[otherProfile.current_activity] || '🏃'}
-          </div>
-          <div>
-            <div style={{ fontFamily: 'sans-serif', fontSize: '13px', fontWeight: 700, color: '#0d0d0d' }}>
-              {/* FIX 9: replace ALL underscores, not just the first */}
-              {otherProfile.current_activity.replace(/_/g, ' ')} · {otherProfile.available_time}
-            </div>
-            <div style={{ fontSize: '11px', color: '#0d0d0d', opacity: 0.6, marginTop: '1px' }}>
-              Hey Strolly matched us ✨
-            </div>
-          </div>
-        </div>
+      {/* Session banner — replaces the old activity bar, handles all states */}
+      {conversationId && (
+        <SessionBanner
+          conversationId={conversationId}
+          currentUserId={currentUserId}
+          otherId={otherId}
+          otherName={otherProfile?.full_name || ''}
+          activity={otherProfile?.current_activity || ''}
+          availableTime={otherProfile?.available_time || ''}
+        />
       )}
 
       {/* Messages */}

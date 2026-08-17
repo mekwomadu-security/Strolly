@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import BottomNav from '@/components/BottomNav'
 
 interface Match {
   id: string
@@ -96,7 +97,7 @@ export default function GymAiMatchPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f0' }}>
+    <div style={{ minHeight: '100vh', background: '#f5f5f0', paddingBottom: '80px' }}>
 
       {/* Header */}
       <div style={{ padding: '56px 24px 20px', background: '#ffffff', borderBottom: '1px solid #e2e2d8', display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -242,6 +243,7 @@ export default function GymAiMatchPage() {
         )}
 
       </div>
+      <BottomNav />
     </div>
   )
 }
