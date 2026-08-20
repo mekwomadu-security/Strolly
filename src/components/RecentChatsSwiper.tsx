@@ -138,7 +138,7 @@ export default function RecentChatsSwiper({ chats = [] }: Props) {
           onClick={() => setTab('activities')}
           style={{ flex: 1, padding: '12px', background: tab === 'activities' ? '#0d0d0d' : 'transparent', border: 'none', borderLeft: '1px solid #e2e2d8', cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: tab === 'activities' ? '#CAFF00' : '#5a5a5a' }}
         >
-          🏃 Recent activities
+           Recent activities
         </button>
       </div>
 

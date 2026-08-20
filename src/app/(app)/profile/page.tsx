@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import BottomNav from '@/components/BottomNav'
 
 interface Profile {
   id: string
@@ -24,10 +25,22 @@ interface Photo {
   position: number
 }
 
-const activityIcons: Record<string, string> = {
-  gym: '🏋️', jogging: '🏃', cycling: '🚴',
-  football: '⚽', yoga: '🧘', swimming: '🏊',
-  dog_walk: '🐕', badminton: '🏸', tennis: '🎾',
+const activityPhotos: Record<string, string> = {
+  gym: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80',
+  jogging: 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=300&q=80',
+  cycling: 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=300&q=80',
+  football: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=300&q=80',
+  yoga: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=300&q=80',
+  swimming: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=300&q=80',
+  dog_walk: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=300&q=80',
+  badminton: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=300&q=80',
+  tennis: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=300&q=80',
+}
+
+const activityLabels: Record<string, string> = {
+  gym: 'Gym', jogging: 'Jogging', cycling: 'Cycling',
+  football: 'Football', yoga: 'Yoga', swimming: 'Swimming',
+  dog_walk: 'Dog walk', badminton: 'Badminton', tennis: 'Tennis',
 }
 
 export default function ProfilePage() {
@@ -35,7 +48,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
 
   useEffect(() => {
     fetchProfile()
@@ -84,131 +97,153 @@ export default function ProfilePage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f0', paddingBottom: '100px' }}>
 
-      {/* Header */}
-      <div style={{ background: '#0d0d0d', padding: '56px 24px 32px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '150px', height: '150px', borderRadius: '50%', background: '#CAFF00', opacity: 0.08 }} />
+      {/* Hero header with real photo background */}
+      <div style={{ position: 'relative', height: '260px', overflow: 'hidden' }}>
+        {profile?.activities?.[0] && activityPhotos[profile.activities[0]] ? (
+          <img
+            src={activityPhotos[profile.activities[0]]}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.4)' }}
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', background: '#0d0d0d' }} />
+        )}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.88))' }} />
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
+        {/* Back + Edit */}
+        <div style={{ position: 'absolute', top: '52px', left: '20px', right: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button
             onClick={() => router.push('/home')}
-            style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             ←
           </button>
           <button
             onClick={() => router.push('/profile/edit')}
-            style={{ padding: '8px 16px', background: '#CAFF00', color: '#0d0d0d', border: 'none', borderRadius: '100px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+            style={{ padding: '7px 16px', background: '#CAFF00', color: '#0d0d0d', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
           >
             Edit profile
           </button>
         </div>
 
-        {/* Photo + info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-          {/* Profile photo */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            {mainPhoto ? (
-              <img
-                src={mainPhoto}
-                alt="Profile"
-                style={{ width: '80px', height: '80px', borderRadius: '24px', objectFit: 'cover', border: '3px solid #CAFF00' }}
-              />
-            ) : (
-              <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 800, color: '#0d0d0d', border: '3px solid rgba(202,255,0,0.3)' }}>
-                {initials}
+        {/* Profile info + bio inside hero */}
+        <div style={{ position: 'absolute', bottom: '16px', left: '20px', right: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '14px', marginBottom: '10px' }}>
+            <div style={{ flexShrink: 0, position: 'relative' }}>
+              {mainPhoto ? (
+                <img
+                  src={mainPhoto}
+                  alt="Profile"
+                  onClick={() => setSelectedPhoto(mainPhoto)}
+                  style={{ width: '72px', height: '72px', borderRadius: '20px', objectFit: 'cover', border: '3px solid #CAFF00', cursor: 'pointer' }}
+                />
+              ) : (
+                <div style={{ width: '72px', height: '72px', borderRadius: '20px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 800, color: '#0d0d0d' }}>
+                  {initials}
+                </div>
+              )}
+              {photos.length > 1 && (
+                <div style={{ position: 'absolute', bottom: '-6px', right: '-6px', background: '#0d0d0d', borderRadius: '100px', padding: '2px 6px', fontSize: '9px', fontWeight: 700, color: '#CAFF00', border: '1.5px solid #CAFF00' }}>
+                  +{photos.length - 1}
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>
+                {profile?.full_name}
               </div>
-            )}
-            {photos.length > 1 && (
-              <div style={{ position: 'absolute', bottom: '-6px', right: '-6px', background: '#0d0d0d', borderRadius: '100px', padding: '2px 6px', fontSize: '10px', fontWeight: 700, color: '#CAFF00', border: '1.5px solid #CAFF00' }}>
-                +{photos.length - 1}
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>
+                📍 {profile?.city}
               </div>
-            )}
+              <div style={{ display: 'flex', gap: '16px', marginTop: '6px' }}>
+                <div>
+                  <span style={{ fontSize: '16px', fontWeight: 800, color: '#ffffff' }}>{profile?.session_count || 0}</span>
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginLeft: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sessions</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '16px', fontWeight: 800, color: '#ffffff' }}>{profile?.rating || 5.0}</span>
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginLeft: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Rating</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>
-              {profile?.full_name}
+          {/* Bio inside hero — same as before */}
+          {profile?.bio && (
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
+              {profile.bio}
             </div>
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
-              📍 {profile?.city}
-            </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff' }}>{profile?.session_count || 0}</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sessions</div>
-              </div>
-              <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff' }}>{profile?.rating || 5.0}</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Rating</div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-
-        {/* Bio */}
-        {profile?.bio && (
-          <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
-            {profile.bio}
-          </div>
-        )}
       </div>
 
-      <div style={{ padding: '20px 24px', maxWidth: '480px', margin: '0 auto' }}>
+      <div style={{ padding: '16px 20px', maxWidth: '480px', margin: '0 auto' }}>
 
         {/* Photo gallery */}
-        {photos.length > 1 && (
-          <div style={{ marginBottom: '16px' }}>
+        {photos.length > 0 && (
+          <div style={{ background: '#ffffff', borderRadius: '16px', padding: '14px 16px', border: '1px solid #e2e2d8', marginBottom: '12px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>
               Photos
             </div>
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
               {photos.map(photo => (
                 <img
                   key={photo.id}
                   src={photo.photo_url}
                   alt="Profile"
-                  style={{ width: '100px', height: '100px', borderRadius: '16px', objectFit: 'cover', flexShrink: 0, border: '1.5px solid #e2e2d8' }}
+                  onClick={() => setSelectedPhoto(photo.photo_url)}
+                  style={{ width: '90px', height: '90px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, border: '1px solid #e2e2d8', cursor: 'pointer' }}
                 />
               ))}
             </div>
           </div>
         )}
 
-        {/* Activities */}
-        <div style={{ background: '#ffffff', borderRadius: '20px', padding: '18px', border: '1.5px solid #e2e2d8', marginBottom: '12px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
-            Activities
+        {/* Activities — real photo cards */}
+        {profile?.activities && profile.activities.length > 0 && (
+          <div style={{ background: '#ffffff', borderRadius: '16px', padding: '14px 16px', border: '1px solid #e2e2d8', marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>
+              Activities
+            </div>
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
+              {profile.activities.map((a: string) => (
+                <div key={a} style={{ flexShrink: 0, width: '80px' }}>
+                  <div style={{ borderRadius: '12px', overflow: 'hidden', position: 'relative', height: '80px' }}>
+                    <img
+                      src={activityPhotos[a] || activityPhotos.jogging}
+                      alt={activityLabels[a] || a}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.75)', display: 'block' }}
+                    />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 6px 5px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#ffffff' }}>{activityLabels[a] || a}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {profile?.activities?.map((a: string) => (
-              <span key={a} style={{ padding: '6px 14px', background: '#CAFF00', borderRadius: '100px', fontSize: '13px', fontWeight: 600, color: '#0d0d0d' }}>
-                {activityIcons[a] || '🏃'} {a.replace('_', ' ')}
-              </span>
-            ))}
-          </div>
-        </div>
+        )}
 
-        {/* Fitness info */}
-        <div style={{ background: '#ffffff', borderRadius: '20px', padding: '18px', border: '1.5px solid #e2e2d8', marginBottom: '12px' }}>
+        {/* Fitness profile */}
+        <div style={{ background: '#ffffff', borderRadius: '16px', padding: '14px 16px', border: '1px solid #e2e2d8', marginBottom: '12px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
             Fitness profile
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {profile?.experience_level && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                 <span style={{ color: '#5a5a5a' }}>Experience</span>
                 <span style={{ fontWeight: 600, color: '#0d0d0d', textTransform: 'capitalize' }}>{profile.experience_level}</span>
               </div>
             )}
             {profile?.preferred_time && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                 <span style={{ color: '#5a5a5a' }}>Preferred time</span>
                 <span style={{ fontWeight: 600, color: '#0d0d0d', textTransform: 'capitalize' }}>{profile.preferred_time}</span>
               </div>
             )}
             {profile?.fitness_goal && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                 <span style={{ color: '#5a5a5a' }}>Goal</span>
                 <span style={{ fontWeight: 600, color: '#0d0d0d', textTransform: 'capitalize' }}>{profile.fitness_goal}</span>
               </div>
@@ -217,64 +252,61 @@ export default function ProfilePage() {
         </div>
 
         {/* Account settings */}
-        <div style={{ background: '#ffffff', borderRadius: '20px', border: '1.5px solid #e2e2d8', overflow: 'hidden', marginBottom: '12px' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e2d8' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              Account
-            </div>
+        <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e2d8', overflow: 'hidden', marginBottom: '12px' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e2d8' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Account</div>
           </div>
           {[
-            { label: 'Edit profile', icon: '✏️', action: () => router.push('/profile/edit') },
-            { label: 'Change password', icon: '🔑', action: () => router.push('/forgot-password') },
-            { label: 'Sign out', icon: '👋', action: handleSignOut },
+            { label: 'Edit profile', icon: '', action: () => router.push('/profile/edit') },
+            { label: 'Change password', icon: '', action: () => router.push('/forgot-password') },
+            { label: 'Sign out', icon: '', action: handleSignOut },
           ].map((item, index) => (
             <div
               key={item.label}
               onClick={item.action}
-              style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', borderBottom: index < 2 ? '1px solid #e2e2d8' : 'none' }}
-              onMouseOver={e => e.currentTarget.style.background = '#f5f5f0'}
-              onMouseOut={e => e.currentTarget.style.background = '#ffffff'}
+              style={{ padding: '13px 16px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', borderBottom: index < 2 ? '1px solid #e2e2d8' : 'none' }}
             >
-              <span style={{ fontSize: '18px' }}>{item.icon}</span>
+              <span style={{ fontSize: '16px' }}>{item.icon}</span>
               <span style={{ fontSize: '14px', fontWeight: 500, color: '#0d0d0d', flex: 1 }}>{item.label}</span>
-              <span style={{ fontSize: '16px', color: '#5a5a5a' }}>→</span>
+              <span style={{ fontSize: '14px', color: '#5a5a5a' }}>→</span>
             </div>
           ))}
         </div>
 
         {/* Delete account */}
         <div
-          style={{ background: '#fff0f0', borderRadius: '20px', padding: '16px 18px', border: '1.5px solid #ffcccc', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
           onClick={() => router.push('/profile/edit?section=delete')}
+          style={{ background: '#fff0f0', borderRadius: '16px', padding: '13px 16px', border: '1px solid #ffcccc', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
         >
-          <span style={{ fontSize: '18px' }}>🗑️</span>
+          <span style={{ fontSize: '16px' }}>🗑️</span>
           <span style={{ fontSize: '14px', fontWeight: 500, color: '#cc0000', flex: 1 }}>Delete account</span>
-          <span style={{ fontSize: '16px', color: '#cc0000' }}>→</span>
+          <span style={{ fontSize: '14px', color: '#cc0000' }}>→</span>
         </div>
 
       </div>
 
-      {/* Bottom nav */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '80px', background: '#ffffff', borderTop: '1px solid #e2e2d8', display: 'flex', alignItems: 'flex-start', paddingTop: '12px', zIndex: 100 }}>
-        <div onClick={() => router.push('/home')} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-          <div style={{ fontSize: '20px' }}>🗺️</div>
-          <div style={{ fontSize: '10px', color: '#5a5a5a' }}>Nearby</div>
+      {/* Photo lightbox */}
+      {selectedPhoto && (
+        <div
+          onClick={() => setSelectedPhoto(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: '24px' }}
+        >
+          <button
+            onClick={() => setSelectedPhoto(null)}
+            style={{ position: 'absolute', top: '20px', right: '20px', width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            ×
+          </button>
+          <img
+            src={selectedPhoto}
+            alt="Profile photo"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: '16px', objectFit: 'contain' }}
+          />
         </div>
-        <div onClick={() => router.push('/schedule')} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-          <div style={{ fontSize: '20px' }}>🕐</div>
-          <div style={{ fontSize: '10px', color: '#5a5a5a' }}>Schedule</div>
-        </div>
-        <div onClick={() => router.push('/ai-match')} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-          <div style={{ fontSize: '20px' }}>✨</div>
-          <div style={{ fontSize: '10px', color: '#5a5a5a' }}>AI Match</div>
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#CAFF00', marginBottom: '-2px' }}></div>
-          <div style={{ fontSize: '20px' }}>👤</div>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: '#0d0d0d' }}>Profile</div>
-        </div>
-      </div>
+      )}
 
+      <BottomNav />
     </div>
   )
 }
