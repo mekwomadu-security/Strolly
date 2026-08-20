@@ -132,34 +132,30 @@ export default async function HomePage() {
             You're in {profile?.city}. Ready to find a partner?
           </div>
 
-          {/* 2x2 photo buttons */}
+          {/* 2x2 photo buttons — single line text each */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <a href="/schedule" style={{ display: 'block', borderRadius: '16px', overflow: 'hidden', position: 'relative', height: '88px', textDecoration: 'none'}}>
+            <a href="/schedule" style={{ display: 'block', borderRadius: '16px', overflow: 'hidden', position: 'relative', height: '88px', textDecoration: 'none', border: '1.5px solid #CAFF00' }}>
               <img src="https://images.unsplash.com/photo-1685534536343-697641ada7dc?w=300&q=80" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(1.1)', display: 'block' }} alt="" />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 10px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.82), transparent)' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#CAFF00' }}>Let's go out</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>Schedule a session</div>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 8px 7px', background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#CAFF00', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}> Schedule a session</div>
               </div>
             </a>
             <a href="/groups" style={{ display: 'block', borderRadius: '16px', overflow: 'hidden', position: 'relative', height: '88px', textDecoration: 'none' }}>
               <img src="https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=300&q=80" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(1.15)', display: 'block' }} alt="" />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 10px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.82), transparent)' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff' }}>Groups</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>Join or create</div>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 8px 7px', background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>👥 Join or Create Groups</div>
               </div>
             </a>
             <a href="/ai-match" style={{ display: 'block', borderRadius: '16px', overflow: 'hidden', position: 'relative', height: '88px', textDecoration: 'none' }}>
               <img src="https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=300&q=80" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(1.15)', display: 'block' }} alt="" />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 10px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.82), transparent)' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#CAFF00' }}>✨ Strolly AI Match</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>Find partner now</div>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 8px 7px', background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#CAFF00', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>✨ Strolly AI . Instant Match</div>
               </div>
             </a>
             <a href="/gym" style={{ display: 'block', borderRadius: '16px', overflow: 'hidden', position: 'relative', height: '88px', textDecoration: 'none' }}>
               <img src="https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300&q=80" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(1.15)', display: 'block' }} alt="" />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 10px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.82), transparent)' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff' }}>At the gym</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>Check in now with Strolly AI </div>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 8px 7px', background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
+                <div style={{ fontSize: '9px', fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>⚡Strolly AI · Instant Gym Match</div>
               </div>
             </a>
           </div>

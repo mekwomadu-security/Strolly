@@ -21,6 +21,7 @@ interface Session {
   other_name: string
   other_avatar: string
   rating: number | null
+  note: string | null
 }
 
 interface Props {
@@ -74,7 +75,7 @@ export default function RecentChatsSwiper({ chats = [] }: Props) {
 
       const { data: review } = await supabase
         .from('session_reviews')
-        .select('rating')
+        .select('rating, note')
         .eq('session_id', s.id)
         .eq('reviewee_id', user.id)
         .maybeSingle()
@@ -92,6 +93,7 @@ export default function RecentChatsSwiper({ chats = [] }: Props) {
         other_name: p?.full_name || 'Unknown',
         other_avatar: p?.avatar_url || '',
         rating: review?.rating || null,
+        note: review?.note || null,
       }
     }))
 
@@ -207,18 +209,23 @@ export default function RecentChatsSwiper({ chats = [] }: Props) {
           )}
 
           {sessions.map((s, index) => (
-            <div key={s.id} style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: index < sessions.length - 1 ? '1px solid #f0f0f0' : 'none', background: '#ffffff' }}>
+            <div key={s.id} style={{ padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: '12px', borderBottom: index < sessions.length - 1 ? '1px solid #f0f0f0' : 'none', background: '#ffffff' }}>
               <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
                 {activityIcons[s.activity] || '🏃'}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d0d0d', textTransform: 'capitalize' }}>{s.activity.replace(/_/g, ' ')}</div>
                 <div style={{ fontSize: '12px', color: '#5a5a5a', marginTop: '2px' }}>
                   With {s.other_name.split(' ')[0]}{s.duration_seconds ? ` · ${formatDuration(s.duration_seconds)}` : ''}
                 </div>
                 {s.rating && (
-                  <div style={{ fontSize: '11px', color: '#f5a623', marginTop: '2px' }}>
+                  <div style={{ fontSize: '11px', color: '#f5a623', marginTop: '3px' }}>
                     {'★'.repeat(s.rating)}{'☆'.repeat(5 - s.rating)} {s.rating}.0
+                  </div>
+                )}
+                {s.note && (
+                  <div style={{ fontSize: '11px', color: '#5a5a5a', marginTop: '3px', fontStyle: 'italic' }}>
+                    "{s.note}"
                   </div>
                 )}
               </div>
