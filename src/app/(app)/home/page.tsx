@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import BottomNav from '@/components/BottomNav'
 import RecentChatsSwiper from '@/components/RecentChatsSwiper'
+import LocationCapture from '@/components/LocationCapture'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -191,6 +192,7 @@ export default async function HomePage() {
         <RecentChatsSwiper chats={recentChats} />
 
       </div>
+      <LocationCapture />
       <BottomNav />
     </div>
   )

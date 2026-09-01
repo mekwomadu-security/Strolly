@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useLocation } from '@/hooks/useLocation'
 import BottomNav from '@/components/BottomNav'
 
 const activities = [
+
   { id: 'gym', label: 'Gym', icon: '🏋️' },
   { id: 'jogging', label: 'Jogging', icon: '🏃' },
   { id: 'cycling', label: 'Cycling', icon: '🚴' },
@@ -17,400 +19,366 @@ const activities = [
   { id: 'tennis', label: 'Tennis', icon: '🎾' },
 ]
 
-interface Match {
-  id: string
-  full_name: string
-  city: string
-  activities: string[]
-  current_activity: string
-  available_from: string
-  available_until: string
-  available_date: string
-  score: number
-  reason: string
-}
-
-type ScanState = 'idle' | 'scanning' | 'matched' | 'no_match'
-
-const scanMessages = [
-  { status: 'Scanning nearby…', sub: 'Looking for people active right now' },
-  { status: 'Found people nearby', sub: 'Analysing compatibility factors' },
-  { status: 'Ranking matches…', sub: 'AI weighing compatibility' },
-  { status: 'Best match found!', sub: 'Preparing your match' },
-]
-
-export default function AiMatchPage() {
+export default function AIMatchPage() {
   const router = useRouter()
+  const { location, error: locationError } = useLocation()
+  const [step, setStep] = useState<'pick' | 'scanning' | 'result' | 'error'>('pick')
   const [selectedActivity, setSelectedActivity] = useState('')
-  const [scanState, setScanState] = useState<ScanState>('idle')
-  const [scanStatus, setScanStatus] = useState('Ready to scan')
-  const [scanSub, setScanSub] = useState('Pick an activity and tap below')
-  const [matches, setMatches] = useState<Match[]>([])
+  const [match, setMatch] = useState<any>(null)
+  const [error, setError] = useState('')
+  const [scanTitle, setScanTitle] = useState('Scanning nearby')
+  const [scanSub, setScanSub] = useState('Looking for people active right now...')
+  const [userActivities, setUserActivities] = useState<string[]>([])
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
-  const [totalScanned, setTotalScanned] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  const [matches, setMatches] = useState<any[]>([])
 
-  const currentMatch = matches[currentMatchIndex] || null
+  useEffect(() => {
+    fetchUserActivities()
+  }, [])
 
-  async function startScan() {
-    if (!selectedActivity) {
-      setError('Please pick an activity first')
-      return
-    }
-
-    setScanState('scanning')
-    setError(null)
-    setMatches([])
-    setCurrentMatchIndex(0)
-
-    // Update user availability in Supabase
+  async function fetchUserActivities() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-
-    await supabase
+    if (!user) return
+    const { data } = await supabase
       .from('profiles')
-      .update({
-        current_activity: selectedActivity,
-        is_available: true,
-        available_date: 'Today',
-        available_from: getCurrentTime(),
-        available_until: getTimeInHours(3),
-      })
+      .select('activities')
       .eq('id', user.id)
-
-    // Run scan animation
-    let step = 0
-    const interval = setInterval(() => {
-      if (step < scanMessages.length) {
-        setScanStatus(scanMessages[step].status)
-        setScanSub(scanMessages[step].sub)
-        step++
-      } else {
-        clearInterval(interval)
-        callAiMatch()
-      }
-    }, 900)
+      .single()
+    if (data) setUserActivities(data.activities || [])
   }
 
-  async function callAiMatch() {
+  async function findMatch() {
+    if (!selectedActivity) return
+    setStep('scanning')
+
+    const scanSteps = [
+      { title: 'Scanning nearby', sub: 'Looking for people active right now...' },
+      { title: 'Scanning nearby', sub: 'Finding people near your location...' },
+      { title: 'Ranking matches', sub: 'AI weighing compatibility...' },
+      { title: 'Ranking matches', sub: 'Calculating distance scores...' },
+      { title: 'Best match found!', sub: 'Preparing your match...' },
+    ]
+
+    for (let i = 0; i < scanSteps.length; i++) {
+      await new Promise(r => setTimeout(r, 900))
+      setScanTitle(scanSteps[i].title)
+      setScanSub(scanSteps[i].sub)
+    }
+
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMin = now.getMinutes()
+    const availableFrom = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`
+    const availableUntil = `${String(Math.min(currentHour + 3, 23)).padStart(2, '0')}:00`
+
     try {
       const response = await fetch('/api/ai-match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activity: selectedActivity }),
+        body: JSON.stringify({
+          activity: selectedActivity,
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          availableFrom,
+          availableUntil,
+        }),
       })
 
       const data = await response.json()
 
-      if (data.matches && data.matches.length > 0) {
-        setMatches(data.matches)
-        setTotalScanned(data.total_scanned)
-        setScanState('matched')
-        setScanStatus('Best match found!')
-        setScanSub(`Analysed ${data.total_scanned} people nearby`)
-      } else {
-        setScanState('no_match')
-        setScanStatus('No matches right now')
-        setScanSub('Try again in a few minutes or schedule a session')
+      if (!response.ok) {
+        setError(data.error || 'No matches found nearby')
+        setStep('error')
+        return
       }
+
+      setMatch(data.match)
+      setMatches(data.match.allMatches || [])
+      setCurrentMatchIndex(0)
+      setStep('result')
     } catch (err) {
-      setScanState('no_match')
-      setScanStatus('Something went wrong')
-      setScanSub('Please try again')
-      setError('AI match failed. Please try again.')
+      setError('Something went wrong. Please try again.')
+      setStep('error')
     }
   }
 
   function skipMatch() {
     if (currentMatchIndex < matches.length - 1) {
-      setCurrentMatchIndex(currentMatchIndex + 1)
+      setCurrentMatchIndex(prev => prev + 1)
+      const next = matches[currentMatchIndex + 1]
+      setMatch((prev: any) => ({ ...prev, ...next }))
     } else {
-      setScanState('no_match')
-      setScanStatus('No more matches')
-      setScanSub('You\'ve seen all available matches')
+      setStep('pick')
     }
   }
 
-  function resetScan() {
-    setScanState('idle')
-    setScanStatus('Ready to scan')
-    setScanSub('Pick an activity and tap below')
-    setMatches([])
-    setCurrentMatchIndex(0)
-    setError(null)
-  }
-
-  async function acceptMatch() {
-    if (!currentMatch) return
-    router.push(`/chat/${currentMatch.id}`)
-  }
-
-  function getCurrentTime() {
-    const now = new Date()
-    const hours = now.getHours()
-    const minutes = now.getMinutes()
-    const ampm = hours >= 12 ? 'PM' : 'AM'
-    const h = hours % 12 || 12
-    const m = minutes.toString().padStart(2, '0')
-    return `${h}:${m} ${ampm}`
-  }
-
-  function getTimeInHours(hoursAhead: number) {
-    const now = new Date()
-    now.setHours(now.getHours() + hoursAhead)
-    const hours = now.getHours()
-    const minutes = now.getMinutes()
-    const ampm = hours >= 12 ? 'PM' : 'AM'
-    const h = hours % 12 || 12
-    const m = minutes.toString().padStart(2, '0')
-    return `${h}:${m} ${ampm}`
-  }
-
-  const activityData = activities.find(a => a.id === selectedActivity)
+  const displayActivities = userActivities.length > 0
+    ? activities.filter(a => userActivities.includes(a.id))
+    : activities
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f0', paddingBottom: '80px' }}>
 
+      <style>{`
+        @keyframes ping1 { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.5); opacity: 0; } }
+        @keyframes ping2 { 0% { transform: scale(1); opacity: 0.4; } 100% { transform: scale(3.2); opacity: 0; } }
+        @keyframes ping3 { 0% { transform: scale(1); opacity: 0.2; } 100% { transform: scale(4); opacity: 0; } }
+        @keyframes dotPulse { 0%,100% { opacity: 0.2; } 50% { opacity: 1; } }
+        @keyframes errorPulse { 0%,100% { transform: scale(1); opacity: 0.3; } 50% { transform: scale(1.8); opacity: 0; } }
+        @keyframes sadBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+      `}</style>
+
       {/* Header */}
-      <div style={{ padding: '56px 24px 20px', background: '#ffffff', borderBottom: '1px solid #e2e2d8', display: 'flex', alignItems: 'center', gap: '14px' }}>
+      <div style={{ padding: '52px 24px 20px', background: '#f5f5f0', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button
-          onClick={() => router.push('/home')}
-          style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f5f5f0', border: 'none', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => router.back()}
+          style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#ffffff', border: '1px solid #e2e2d8', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           ←
         </button>
         <div>
-          <div style={{ fontFamily: 'sans-serif', fontSize: '20px', fontWeight: 800, color: '#0d0d0d', letterSpacing: '-0.5px' }}>
-            AI Instant Match
-          </div>
-          <div style={{ fontSize: '12px', color: '#5a5a5a', marginTop: '2px' }}>
-            Finds your best partner right now
-          </div>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: '#0d0d0d', letterSpacing: '-0.5px' }}>AI Instant Match</div>
+          <div style={{ fontSize: '12px', color: '#5a5a5a', marginTop: '1px' }}>Finds your best partner right now</div>
         </div>
       </div>
 
-      <div style={{ padding: '24px', maxWidth: '480px', margin: '0 auto' }}>
+      {/* Pick + Scanning */}
+      {(step === 'pick' || step === 'scanning') && (
+        <div style={{ padding: '0 24px', maxWidth: '480px', margin: '0 auto' }}>
 
-        {/* Activity picker */}
-        {scanState === 'idle' && (
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
-              I want to do
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {activities.map(a => (
-                <button
-                  key={a.id}
-                  onClick={() => { setSelectedActivity(a.id); setError(null) }}
-                  style={{
-                    padding: '10px 16px',
-                    background: selectedActivity === a.id ? '#CAFF00' : '#ffffff',
-                    border: `2px solid ${selectedActivity === a.id ? '#a8d900' : '#e2e2d8'}`,
-                    borderRadius: '100px',
-                    fontSize: '13px',
-                    fontWeight: selectedActivity === a.id ? 700 : 500,
-                    color: '#0d0d0d',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {a.icon} {a.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Scan area */}
-        <div style={{ background: '#0d0d0d', borderRadius: '28px', padding: '32px 28px', marginBottom: '16px', position: 'relative', overflow: 'hidden', minHeight: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-
-          {/* Animated rings */}
-          {scanState === 'scanning' && (
+          {step === 'pick' && (
             <>
-              {[60, 110, 165, 220].map((size, i) => (
-                <div
-                  key={i}
-                  style={{
-                    position: 'absolute',
-                    width: `${size}px`,
-                    height: `${size}px`,
-                    borderRadius: '50%',
-                    border: '1.5px solid #CAFF00',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    animation: `scanRing 2.4s ease-out infinite ${i * 0.6}s`,
-                    opacity: 0,
-                  }}
-                />
-              ))}
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                I want to do
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+                {displayActivities.map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => setSelectedActivity(a.id)}
+                    style={{
+                      padding: '8px 14px',
+                      background: selectedActivity === a.id ? '#0d0d0d' : '#ffffff',
+                      color: selectedActivity === a.id ? '#CAFF00' : '#0d0d0d',
+                      border: `1.5px solid ${selectedActivity === a.id ? '#0d0d0d' : '#e2e2d8'}`,
+                      borderRadius: '100px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {a.icon} {a.label}
+                  </button>
+                ))}
+              </div>
             </>
           )}
 
-          {/* Center icon */}
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '52px', height: '52px', borderRadius: '50%', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', zIndex: 2 }}>
-            {scanState === 'matched' ? '🎯' : scanState === 'no_match' ? '😔' : selectedActivity ? activityData?.icon : '✨'}
-          </div>
+          {/* Signature black card */}
+          <div style={{ background: '#1a1a1a', borderRadius: '20px', padding: '20px 20px 16px', marginBottom: '14px', position: 'relative', overflow: 'hidden', minHeight: '130px' }}>
 
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: '#CAFF00', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
-              Strolly AI
-            </div>
-            <div style={{ fontFamily: 'sans-serif', fontSize: '22px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px', marginBottom: '6px' }}>
-              {scanStatus}
-            </div>
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
-              {scanSub}
-            </div>
-          </div>
-
-          {/* Scanning dots */}
-          {scanState === 'scanning' && (
-            <div style={{ display: 'flex', gap: '4px', position: 'relative', zIndex: 2 }}>
-              {[0, 0.2, 0.4].map((delay, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: '#CAFF00',
-                    animation: `dotPulse 1.2s ease-in-out infinite ${delay}s`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* CSS animations */}
-        <style>{`
-          @keyframes scanRing {
-            0% { opacity: 0.8; transform: translate(-50%, -50%) scale(0.5); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-          }
-          @keyframes dotPulse {
-            0%, 100% { opacity: 0.25; }
-            50% { opacity: 1; }
-          }
-        `}</style>
-
-        {/* Find match button */}
-        {scanState === 'idle' && (
-          <>
-            {error && (
-              <div style={{ padding: '12px 16px', background: '#fff0f0', border: '1.5px solid #ffcccc', borderRadius: '12px', fontSize: '13px', color: '#cc0000', marginBottom: '12px' }}>
-                {error}
+            {/* Scanning — animated rings */}
+            {step === 'scanning' && (
+              <div style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', width: '64px', height: '64px' }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', animation: 'ping1 1.5s ease-out infinite' }} />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', animation: 'ping2 1.5s ease-out infinite 0.3s' }} />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', animation: 'ping3 1.5s ease-out infinite 0.6s' }} />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
+                  ✨
+                </div>
               </div>
             )}
-            <button
-              onClick={startScan}
-              style={{ width: '100%', padding: '18px', background: '#CAFF00', color: '#0d0d0d', fontFamily: 'sans-serif', fontSize: '16px', fontWeight: 700, border: 'none', borderRadius: '16px', cursor: 'pointer' }}
-            >
-              ✨ Find my match now
-            </button>
-          </>
-        )}
 
-        {/* No match state */}
-        {scanState === 'no_match' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              onClick={resetScan}
-              style={{ width: '100%', padding: '16px', background: '#CAFF00', color: '#0d0d0d', fontSize: '15px', fontWeight: 700, border: 'none', borderRadius: '16px', cursor: 'pointer' }}
-            >
-              Try again
-            </button>
-            <button
-              onClick={() => router.push('/schedule')}
-              style={{ width: '100%', padding: '16px', background: '#ffffff', color: '#0d0d0d', fontSize: '15px', fontWeight: 600, border: '1.5px solid #e2e2d8', borderRadius: '16px', cursor: 'pointer' }}
-            >
-              Schedule a session instead
-            </button>
+            {/* Pick — static lime circle */}
+            {step === 'pick' && (
+              <div style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', width: '64px', height: '64px', borderRadius: '50%', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                ✨
+              </div>
+            )}
+
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#CAFF00', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Strolly AI
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: 800, color: '#ffffff', marginBottom: '6px' }}>
+              {step === 'pick' ? 'Ready to scan' : scanTitle}
+            </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', marginBottom: '10px' }}>
+              {step === 'pick'
+                ? (selectedActivity
+                  ? `Finding ${displayActivities.find(a => a.id === selectedActivity)?.label} partners near you`
+                  : 'Pick an activity and tap below')
+                : scanSub
+              }
+            </div>
+
+            {step === 'pick' && location && (
+              <div style={{ fontSize: '11px', color: '#CAFF00', fontWeight: 600, marginBottom: '10px' }}>
+                📍 Location ready
+              </div>
+            )}
+            {step === 'pick' && locationError && (
+              <div style={{ fontSize: '11px', color: 'rgba(255,120,120,0.9)', marginBottom: '10px' }}>
+                ⚠️ Enable location for better matches
+              </div>
+            )}
+
+            {/* Animated dots */}
+            <div style={{ display: 'flex', gap: '5px' }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{
+                  width: '6px', height: '6px', borderRadius: '50%',
+                  background: step === 'scanning' ? '#CAFF00' : 'rgba(255,255,255,0.2)',
+                  animation: step === 'scanning' ? `dotPulse 1.2s ease-in-out infinite ${i * 0.2}s` : 'none',
+                }} />
+              ))}
+            </div>
           </div>
-        )}
 
-        {/* Match card */}
-        {scanState === 'matched' && currentMatch && (
-          <>
-            {/* AI reasoning */}
-            <div style={{ background: '#f0ffe0', border: '1.5px solid #a8d900', borderRadius: '20px', padding: '16px', marginBottom: '12px' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '100px', background: '#0d0d0d', color: '#CAFF00', fontSize: '10px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
-                ✦ AI reasoning
+          {step === 'pick' && (
+            <button
+              onClick={findMatch}
+              disabled={!selectedActivity}
+              style={{
+                width: '100%', padding: '16px',
+                background: '#CAFF00', color: '#0d0d0d',
+                border: 'none', borderRadius: '16px',
+                fontSize: '16px', fontWeight: 800,
+                cursor: selectedActivity ? 'pointer' : 'not-allowed',
+                opacity: selectedActivity ? 1 : 0.5,
+              }}
+            >
+              Find my match now
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Result */}
+      {step === 'result' && match && (
+        <div style={{ padding: '0 24px', maxWidth: '480px', margin: '0 auto' }}>
+          <div style={{ background: '#0d0d0d', borderRadius: '24px', padding: '24px', marginBottom: '14px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#CAFF00', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '16px' }}>
+              ✨ Best match found
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
+              {match.avatar ? (
+                <img src={match.avatar} alt={match.name} style={{ width: '64px', height: '64px', borderRadius: '18px', objectFit: 'cover', border: '3px solid #CAFF00' }} />
+              ) : (
+                <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: '#0d0d0d' }}>
+                  {match.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>{match.name}</div>
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>📍 {match.distanceLabel}</div>
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>⭐ {match.rating}/5 · {match.sessionCount} sessions</div>
               </div>
-              <div style={{ fontSize: '13px', color: '#0d0d0d', lineHeight: 1.6, marginBottom: '10px' }}>
-                Analysed {totalScanned} nearby people. {currentMatch.full_name} ranked #{currentMatchIndex + 1} — {currentMatch.reason}
-              </div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <span style={{ padding: '4px 10px', borderRadius: '100px', background: '#CAFF00', color: '#0d0d0d', fontSize: '11px', fontWeight: 600, border: '1.5px solid #a8d900' }}>
-                  📍 {currentMatch.city}
-                </span>
-                <span style={{ padding: '4px 10px', borderRadius: '100px', background: '#CAFF00', color: '#0d0d0d', fontSize: '11px', fontWeight: 600, border: '1.5px solid #a8d900' }}>
-                  ⚡ Available now
-                </span>
-                <span style={{ padding: '4px 10px', borderRadius: '100px', background: '#CAFF00', color: '#0d0d0d', fontSize: '11px', fontWeight: 600, border: '1.5px solid #a8d900' }}>
-                  {currentMatch.available_from} → {currentMatch.available_until}
-                </span>
+              <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#CAFF00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 900, color: '#0d0d0d', lineHeight: 1 }}>{match.scorePercent}</div>
+                  <div style={{ fontSize: '9px', fontWeight: 700, color: '#0d0d0d' }}>%</div>
+                </div>
+                <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>match</div>
               </div>
             </div>
 
-            {/* Match card */}
-            <div style={{ background: '#0d0d0d', borderRadius: '24px', padding: '20px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-                <div style={{ width: '56px', height: '56px', borderRadius: '18px', background: '#CAFF00', color: '#0d0d0d', fontFamily: 'sans-serif', fontWeight: 800, fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {currentMatch.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div style={{ fontFamily: 'sans-serif', fontSize: '18px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>
-                    {currentMatch.full_name}
+            {/* Score breakdown */}
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px' }}>Score breakdown</div>
+              {[
+                { label: '📍 Distance', score: match.distanceScore, max: 40 },
+                { label: '🏃 Activity', score: match.activityScore, max: 35 },
+                { label: '🕐 Time', score: match.timeScore, max: 25 },
+                { label: '⭐ Rating', score: match.ratingScore, max: 10 },
+              ].map(item => (
+                <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', width: '90px', flexShrink: 0 }}>{item.label}</div>
+                  <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: `${(item.score / item.max) * 100}%`, height: '100%', background: '#CAFF00', borderRadius: '2px' }} />
                   </div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '3px' }}>
-                    {currentMatch.current_activity?.replace('_', ' ')} · Available now
-                  </div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#CAFF00', width: '36px', textAlign: 'right', flexShrink: 0 }}>{item.score}/{item.max}</div>
                 </div>
-              </div>
+              ))}
+            </div>
 
-              {/* Score bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>AI match score</div>
-                <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', background: '#CAFF00', borderRadius: '3px', width: `${currentMatch.score}%`, transition: 'width 1.2s ease' }} />
-                </div>
-                <div style={{ fontFamily: 'sans-serif', fontSize: '13px', fontWeight: 800, color: '#CAFF00', whiteSpace: 'nowrap' }}>
-                  {currentMatch.score}%
-                </div>
-              </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, fontStyle: 'italic', marginBottom: '20px' }}>
+              "{match.reasoning}"
+            </div>
 
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={acceptMatch}
-                  style={{ flex: 1, padding: '14px', background: '#CAFF00', color: '#0d0d0d', fontFamily: 'sans-serif', fontSize: '14px', fontWeight: 800, border: 'none', borderRadius: '16px', cursor: 'pointer' }}
-                >
-                  Accept match →
-                </button>
-                <button
-                  onClick={skipMatch}
-                  style={{ padding: '14px 18px', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', fontSize: '14px', fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', cursor: 'pointer' }}
-                >
-                  Skip
-                </button>
-              </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => router.push('/chat/' + match.id)}
+                style={{ flex: 1, padding: '14px', background: '#CAFF00', color: '#0d0d0d', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Accept match →
+              </button>
+              <button
+                onClick={skipMatch}
+                style={{ padding: '14px 18px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: 'none', borderRadius: '14px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Skip
+              </button>
             </div>
 
             {matches.length > 1 && (
-              <div style={{ textAlign: 'center', fontSize: '12px', color: '#5a5a5a' }}>
+              <div style={{ textAlign: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>
                 Match {currentMatchIndex + 1} of {matches.length}
               </div>
             )}
-          </>
-        )}
+          </div>
+        </div>
+      )}
 
-      </div>
+      {/* Error — animated */}
+      {step === 'error' && (
+        <div style={{ padding: '0 24px', maxWidth: '480px', margin: '0 auto' }}>
+          <div style={{ background: '#1a1a1a', borderRadius: '20px', padding: '28px 24px', position: 'relative', overflow: 'hidden' }}>
+
+            {/* Animated ✨ star on the right */}
+            <div style={{ position: 'absolute', right: '20px', top: '24px', width: '56px', height: '56px' }}>
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', opacity: 0.3, animation: 'errorPulse 2s ease-out infinite' }} />
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', opacity: 0.2, animation: 'errorPulse 2s ease-out infinite 0.4s' }} />
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
+                ✨
+              </div>
+            </div>
+
+            <div style={{ fontSize: '10px', fontWeight: 800, color: '#CAFF00', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '16px' }}>
+              Strolly AI
+            </div>
+
+            {/* Sad face bouncing */}
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '52px', animation: 'sadBounce 2s ease-in-out infinite', display: 'inline-block' }}>
+                😔
+              </div>
+            </div>
+
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', marginBottom: '8px', textAlign: 'center' }}>
+              No matches found
+            </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', marginBottom: '24px', textAlign: 'center', lineHeight: 1.6 }}>
+              {error || 'No one nearby is available right now. Try a different activity or check back soon.'}
+            </div>
+
+            <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', marginBottom: '20px' }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />
+              ))}
+            </div>
+
+            <button
+              onClick={() => setStep('pick')}
+              style={{ width: '100%', padding: '14px', background: '#CAFF00', color: '#0d0d0d', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 800, cursor: 'pointer' }}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+
       <BottomNav />
     </div>
   )
