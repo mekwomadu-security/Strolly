@@ -58,10 +58,11 @@ export default function NearbyPage() {
   const searchParams = useSearchParams()
   const activityParam = searchParams.get('activity')
 
-  const [nearbyUsers, setNearbyUsers] = useState<Profile[]>([])
+  const [allUsers, setAllUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [userProfile, setUserProfile] = useState<Profile | null>(null)
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [primaryIndex, setPrimaryIndex] = useState(0)
+  const [otherIndex, setOtherIndex] = useState(0)
   const [selectedActivity, setSelectedActivity] = useState(activityParam || 'all')
 
   useEffect(() => {
@@ -83,22 +84,14 @@ export default function NearbyPage() {
 
     if (profile) setUserProfile(profile)
 
-    // Only fetch people with same activity as user scheduled
-    const query = supabase
+    const { data: nearby } = await supabase
       .from('profiles')
       .select('*')
       .neq('id', user.id)
       .eq('is_available', true)
       .eq('available_date', today)
 
-    // If activity param passed from schedule — filter by it
-    if (activityParam) {
-      query.eq('current_activity', activityParam)
-    }
-
-    const { data: nearby } = await query
-
-    if (nearby) setNearbyUsers(nearby)
+    if (nearby) setAllUsers(nearby)
     setLoading(false)
   }
 
@@ -106,29 +99,123 @@ export default function NearbyPage() {
     return name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??'
   }
 
-  const filteredUsers = selectedActivity === 'all'
-    ? nearbyUsers
-    : nearbyUsers.filter(u => u.current_activity === selectedActivity)
-
-  const currentUser = filteredUsers[currentIndex]
-
-  const distance = userProfile?.latitude && currentUser?.latitude
-    ? calculateDistance(userProfile.latitude, userProfile.longitude, currentUser.latitude, currentUser.longitude)
-    : null
-
-  const distanceLabel = distance !== null ? getDistanceLabel(distance) : null
-
-  function skipUser() {
-    if (currentIndex < filteredUsers.length - 1) {
-      setCurrentIndex(prev => prev + 1)
-    } else {
-      setCurrentIndex(0)
-    }
+  function getDistance(u: Profile) {
+    if (!userProfile?.latitude || !u.latitude) return null
+    return calculateDistance(userProfile.latitude, userProfile.longitude, u.latitude, u.longitude)
   }
+
+  const primaryUsers = selectedActivity === 'all'
+    ? allUsers
+    : allUsers.filter(u => u.current_activity === selectedActivity)
+
+  const otherUsers = selectedActivity === 'all'
+    ? []
+    : allUsers.filter(u => u.current_activity !== selectedActivity)
+
+  const currentPrimary = primaryUsers[primaryIndex]
+  const currentOther = otherUsers[otherIndex]
+
+  const primaryDistance = currentPrimary ? getDistance(currentPrimary) : null
+  const primaryDistanceLabel = primaryDistance !== null ? getDistanceLabel(primaryDistance!) : null
+
+  const otherDistance = currentOther ? getDistance(currentOther) : null
+  const otherDistanceLabel = otherDistance !== null ? getDistanceLabel(otherDistance!) : null
 
   function handleActivityFilter(activity: string) {
     setSelectedActivity(activity)
-    setCurrentIndex(0)
+    setPrimaryIndex(0)
+    setOtherIndex(0)
+  }
+
+  function renderMatchCard(
+    user: Profile,
+    index: number,
+    total: number,
+    distLabel: string | null,
+    onSkip: () => void,
+    onAccept: () => void,
+    isPrimary: boolean
+  ) {
+    return (
+      <div style={{ background: '#0d0d0d', borderRadius: '24px', padding: '24px', marginBottom: '12px' }}>
+
+        {/* Label */}
+        <div style={{ fontSize: '10px', fontWeight: 800, color: '#CAFF00', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '16px' }}>
+          {isPrimary
+            ? `${activityIcons[selectedActivity] || '🏃'} ${activityLabels[selectedActivity] || selectedActivity} · ${index + 1} of ${total}`
+            : `✦ Other activity · ${index + 1} of ${total}`
+          }
+        </div>
+
+        {/* User */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
+          {user.avatar_url ? (
+            <img src={user.avatar_url} alt={user.full_name} style={{ width: '64px', height: '64px', borderRadius: '18px', objectFit: 'cover', border: '3px solid #CAFF00', flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: '#0d0d0d', flexShrink: 0 }}>
+              {getInitials(user.full_name)}
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>{user.full_name}</div>
+            {distLabel && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>📍 {distLabel}</div>}
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
+              ⭐ {user.rating || 5} · {user.session_count || 0} sessions
+            </div>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Activity</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: isPrimary ? '#CAFF00' : '#ffffff' }}>
+              {activityIcons[user.current_activity] || '🏃'} {activityLabels[user.current_activity] || user.current_activity?.replace(/_/g, ' ')}
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: user.experience_level ? '8px' : '0' }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Available</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>{user.available_from} – {user.available_until}</div>
+          </div>
+          {user.experience_level && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Level</div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', textTransform: 'capitalize' }}>{user.experience_level}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={onAccept}
+            style={{ flex: 1, padding: '14px', background: '#CAFF00', color: '#0d0d0d', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Say hello →
+          </button>
+          {total > 1 && (
+            <button
+              onClick={onSkip}
+              style={{ padding: '14px 20px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: 'none', borderRadius: '14px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Skip
+            </button>
+          )}
+        </div>
+
+        {/* Dot indicators */}
+        {total > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '14px' }}>
+            {Array.from({ length: total }).map((_, i) => (
+              <div
+                key={i}
+                style={{ width: i === index ? '20px' : '8px', height: '8px', borderRadius: '4px', background: i === index ? '#CAFF00' : 'rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'all 0.2s' }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -144,38 +231,33 @@ export default function NearbyPage() {
             ←
           </button>
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#0d0d0d', letterSpacing: '-0.5px' }}>
-              Nearby matches
-            </div>
-            <div style={{ fontSize: '13px', color: '#5a5a5a', marginTop: '2px' }}>
-              {activityParam
-                ? `People available for ${activityLabels[activityParam] || activityParam} today`
-                : 'People available today near you'
-              }
-            </div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#0d0d0d', letterSpacing: '-0.5px' }}>Nearby matches</div>
+            <div style={{ fontSize: '13px', color: '#5a5a5a', marginTop: '2px' }}>People available today near you</div>
           </div>
         </div>
 
-        {/* Activity filter — only show if no specific activity from schedule */}
-        {!activityParam && (
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-            <button
-              onClick={() => handleActivityFilter('all')}
-              style={{ flexShrink: 0, padding: '7px 14px', background: selectedActivity === 'all' ? '#0d0d0d' : '#f5f5f0', color: selectedActivity === 'all' ? '#CAFF00' : '#0d0d0d', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-            >
-              All
-            </button>
-            {Object.entries(activityLabels).map(([key, label]) => (
+        {/* Activity filter tabs — only show activities with people */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <button
+            onClick={() => handleActivityFilter('all')}
+            style={{ flexShrink: 0, padding: '7px 14px', background: selectedActivity === 'all' ? '#0d0d0d' : '#f5f5f0', color: selectedActivity === 'all' ? '#CAFF00' : '#0d0d0d', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            All ({allUsers.length})
+          </button>
+          {Object.entries(activityLabels).map(([key, label]) => {
+            const count = allUsers.filter(u => u.current_activity === key).length
+            if (count === 0) return null
+            return (
               <button
                 key={key}
                 onClick={() => handleActivityFilter(key)}
                 style={{ flexShrink: 0, padding: '7px 14px', background: selectedActivity === key ? '#0d0d0d' : '#f5f5f0', color: selectedActivity === key ? '#CAFF00' : '#0d0d0d', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
               >
-                {activityIcons[key]} {label}
+                {activityIcons[key]} {label} ({count})
               </button>
-            ))}
-          </div>
-        )}
+            )
+          })}
+        </div>
       </div>
 
       <div style={{ padding: '16px 24px', maxWidth: '480px', margin: '0 auto' }}>
@@ -183,43 +265,34 @@ export default function NearbyPage() {
         {/* AI Match banner */}
         <div
           onClick={() => router.push('/ai-match')}
-          style={{ background: '#0d0d0d', borderRadius: '20px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', marginBottom: '16px', position: 'relative', overflow: 'hidden' }}
+          style={{ background: '#0d0d0d', borderRadius: '20px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', marginBottom: '16px', position: 'relative', overflow: 'hidden' }}
         >
           <div style={{ position: 'absolute', right: '-10px', top: '-10px', width: '80px', height: '80px', borderRadius: '50%', background: '#CAFF00', opacity: 0.15 }} />
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-            ✨
-          </div>
+          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>✨</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#CAFF00', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '2px' }}>
-              AI Instant Match
-            </div>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>Let AI pick your best match</div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>Strolly Ai analyses all nearby people and ranks by compatibility</div>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#CAFF00', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '2px' }}>AI Instant Match</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>Let Strolly AI pick your best match</div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Strolly AI ranks by distance, activity and time</div>
           </div>
-          <div style={{ background: '#CAFF00', borderRadius: '100px', padding: '8px 14px', fontSize: '12px', fontWeight: 700, color: '#0d0d0d', flexShrink: 0 }}>
+          <div style={{ background: '#CAFF00', borderRadius: '100px', padding: '7px 12px', fontSize: '12px', fontWeight: 700, color: '#0d0d0d', flexShrink: 0 }}>
             Match me →
           </div>
         </div>
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#5a5a5a', fontSize: '14px' }}>
+          <div style={{ textAlign: 'center', padding: '60px', color: '#5a5a5a', fontSize: '14px' }}>
             Finding people nearby...
           </div>
         )}
 
-        {!loading && filteredUsers.length === 0 && (
+        {!loading && allUsers.length === 0 && (
           <div style={{ background: '#ffffff', borderRadius: '20px', padding: '40px 24px', textAlign: 'center', border: '1.5px solid #e2e2d8' }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0d0d0d', marginBottom: '8px' }}>
-              No one nearby yet
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0d0d0d', marginBottom: '8px' }}>No one nearby yet</div>
+            <div style={{ fontSize: '14px', color: '#5a5a5a', lineHeight: 1.6, marginBottom: '24px' }}>
+              No one has scheduled an activity for today yet. Share the app!
             </div>
-            <div style={{ fontSize: '14px', color: '#ffffff', lineHeight: 1.6, marginBottom: '24px' }}>
-              {activityParam
-                ? `Nobody has scheduled ${activityLabels[activityParam] || activityParam} for today yet. Share the app to find matches!`
-                : 'No one has scheduled an activity for today yet.'
-              }
-            </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
               <button
                 onClick={() => router.push('/schedule')}
                 style={{ padding: '10px 20px', background: '#ffffff', color: '#0d0d0d', border: '1.5px solid #e2e2d8', borderRadius: '100px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
@@ -236,95 +309,48 @@ export default function NearbyPage() {
           </div>
         )}
 
-        {/* Match card */}
-        {!loading && currentUser && (
+        {/* Primary match card */}
+        {!loading && currentPrimary && renderMatchCard(
+          currentPrimary,
+          primaryIndex,
+          primaryUsers.length,
+          primaryDistanceLabel,
+          () => setPrimaryIndex(i => i < primaryUsers.length - 1 ? i + 1 : 0),
+          () => router.push('/chat/' + currentPrimary.id),
+          true
+        )}
+
+        {/* No primary but show message */}
+        {!loading && primaryUsers.length === 0 && allUsers.length > 0 && selectedActivity !== 'all' && (
+          <div style={{ background: '#fff8e1', borderRadius: '16px', padding: '14px 18px', border: '1.5px solid #ffe082', marginBottom: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0d0d0d', marginBottom: '4px' }}>
+              Nobody doing {activityLabels[selectedActivity]} today
+            </div>
+            <div style={{ fontSize: '12px', color: '#5a5a5a' }}>
+              But these people are available for other activities 👇
+            </div>
+          </div>
+        )}
+
+        {/* Other activities card */}
+        {!loading && currentOther && selectedActivity !== 'all' && (
           <>
-            <div style={{ fontSize: '11px', color: '#5a5a5a', textAlign: 'center', marginBottom: '12px', fontWeight: 500 }}>
-              {currentIndex + 1} of {filteredUsers.length} {filteredUsers.length === 1 ? 'person' : 'people'} available
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '8px 0 12px' }}>
+              <div style={{ flex: 1, height: '1px', background: '#e2e2d8' }} />
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                Other activities
+              </div>
+              <div style={{ flex: 1, height: '1px', background: '#e2e2d8' }} />
             </div>
 
-            <div style={{ background: '#0d0d0d', borderRadius: '24px', padding: '24px', marginBottom: '12px' }}>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
-                {currentUser.avatar_url ? (
-                  <img
-                    src={currentUser.avatar_url}
-                    alt={currentUser.full_name}
-                    style={{ width: '64px', height: '64px', borderRadius: '18px', objectFit: 'cover', border: '3px solid #CAFF00', flexShrink: 0 }}
-                  />
-                ) : (
-                  <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: '#0d0d0d', flexShrink: 0 }}>
-                    {getInitials(currentUser.full_name)}
-                  </div>
-                )}
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>
-                    {currentUser.full_name}
-                  </div>
-                  {distanceLabel && (
-                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
-                      📍 {distanceLabel}
-                    </div>
-                  )}
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
-                    ⭐ {currentUser.rating || 5} · {currentUser.session_count || 0} sessions
-                  </div>
-                </div>
-              </div>
-
-              {/* Details */}
-              <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Activity</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#CAFF00' }}>
-                    {activityIcons[currentUser.current_activity] || '🏃'} {activityLabels[currentUser.current_activity] || currentUser.current_activity?.replace(/_/g, ' ')}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: currentUser.experience_level ? '10px' : '0' }}>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Available</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
-                    {currentUser.available_from} – {currentUser.available_until}
-                  </div>
-                </div>
-                {currentUser.experience_level && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Level</div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', textTransform: 'capitalize' }}>
-                      {currentUser.experience_level}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={() => router.push('/chat/' + currentUser.id)}
-                  style={{ flex: 1, padding: '14px', background: '#CAFF00', color: '#0d0d0d', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Say hello →
-                </button>
-                {filteredUsers.length > 1 && (
-                  <button
-                    onClick={skipUser}
-                    style={{ padding: '14px 20px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: 'none', borderRadius: '14px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Skip
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Dot indicators */}
-            {filteredUsers.length > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
-                {filteredUsers.map((_, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setCurrentIndex(i)}
-                    style={{ width: i === currentIndex ? '20px' : '8px', height: '8px', borderRadius: '4px', background: i === currentIndex ? '#0d0d0d' : '#e2e2d8', cursor: 'pointer', transition: 'all 0.2s' }}
-                  />
-                ))}
-              </div>
+            {renderMatchCard(
+              currentOther,
+              otherIndex,
+              otherUsers.length,
+              otherDistanceLabel,
+              () => setOtherIndex(i => i < otherUsers.length - 1 ? i + 1 : 0),
+              () => router.push('/chat/' + currentOther.id),
+              false
             )}
           </>
         )}
