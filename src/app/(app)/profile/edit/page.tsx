@@ -14,6 +14,8 @@ const activities = [
   { id: 'dog_walk', label: 'Dog walk', icon: '🐕' },
   { id: 'badminton', label: 'Badminton', icon: '🏸' },
   { id: 'tennis', label: 'Tennis', icon: '🎾' },
+  { id: 'golfing', label: 'Golfing', icon: '🏌🏿‍♂️' },
+
 ]
 
 const experienceLevels = ['Beginner', 'Intermediate', 'Advanced']

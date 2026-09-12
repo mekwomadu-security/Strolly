@@ -33,11 +33,11 @@ export default function ChatsPage() {
 
     // Get all conversations
     const { data: convs } = await supabase
-      .from('conversations')
-      .select('*')
-      .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-      .order('created_at', { ascending: false })
-
+  .from('conversations')
+  .select('*')
+  .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+  .or('closed_at.is.null,closed_at.gt.' + new Date().toISOString())
+  .order('created_at', { ascending: false })
     if (!convs || convs.length === 0) {
       setLoading(false)
       return

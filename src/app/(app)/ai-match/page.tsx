@@ -13,10 +13,11 @@ const activities = [
   { id: 'cycling', label: 'Cycling', icon: '🚴' },
   { id: 'football', label: 'Football', icon: '⚽' },
   { id: 'yoga', label: 'Yoga', icon: '🧘' },
-  { id: 'swimming', label: 'Swimming', icon: '🏊' },
+  { id: 'swimming', label: 'Swimming', icon: ' 🏊🏾‍♀️' },
   { id: 'dog_walk', label: 'Dog walk', icon: '🐕' },
   { id: 'badminton', label: 'Badminton', icon: '🏸' },
   { id: 'tennis', label: 'Tennis', icon: '🎾' },
+  { id: 'golfing', label: 'Golfing', icon: '🏌🏿‍♂️' },
 ]
 
 export default function AIMatchPage() {
@@ -104,14 +105,15 @@ export default function AIMatchPage() {
   }
 
   function skipMatch() {
-    if (currentMatchIndex < matches.length - 1) {
-      setCurrentMatchIndex(prev => prev + 1)
-      const next = matches[currentMatchIndex + 1]
-      setMatch((prev: any) => ({ ...prev, ...next }))
-    } else {
-      setStep('pick')
-    }
+  if (currentMatchIndex < matches.length - 1) {
+    const nextIndex = currentMatchIndex + 1
+    setCurrentMatchIndex(nextIndex)
+    const next = matches[nextIndex]
+    setMatch(next)
+  } else {
+    setStep('pick')
   }
+}
 
   const displayActivities = userActivities.length > 0
     ? activities.filter(a => userActivities.includes(a.id))
@@ -351,7 +353,7 @@ export default function AIMatchPage() {
 
             {/* Sad face bouncing */}
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '52px', animation: 'sadBounce 2s ease-in-out infinite', display: 'inline-block' }}>
+              <div style={{ fontSize: '40px', animation: 'sadBounce 2s ease-in-out infinite', display: 'inline-block' }}>
                 😔
               </div>
             </div>

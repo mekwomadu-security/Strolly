@@ -89,7 +89,7 @@ export default function SignupForm() {
       justifyContent: 'center',
       padding: '24px',
       fontFamily: 'DM Sans, sans-serif',
-    }}>
+    }}>grep -n "available_date" src/app/\(app\)/schedule/page.tsx
       <div style={{ width: '100%', maxWidth: '400px' }}>
 
         {/* Logo */}
@@ -208,7 +208,7 @@ export default function SignupForm() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                placeholder="Min. 6 characters"
+                placeholder="Minimum 6 characters"
                 style={{ padding: '14px 16px', background: '#f5f5f0', border: '1.5px solid #e2e2d8', borderRadius: '14px', fontSize: '15px', color: '#0d0d0d', outline: 'none' }}
                 onFocus={e => e.target.style.borderColor = '#a8d900'}
                 onBlur={e => e.target.style.borderColor = '#e2e2d8'}

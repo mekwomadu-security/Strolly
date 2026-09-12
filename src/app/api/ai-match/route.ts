@@ -28,7 +28,6 @@ function getDistanceScore(km: number): number {
 
 function getDistanceLabel(km: number): string {
   if (km < 0.1) return 'Same building'
-  if (km < 0.5) return `${Math.round(km * 1000)}m away`
   if (km < 1.0) return `${Math.round(km * 1000)}m away`
   return `${km.toFixed(1)}km away`
 }
@@ -38,6 +37,7 @@ function getTimeOverlap(
   fromB: string, untilB: string
 ): number {
   const toMins = (t: string) => {
+    if (!t) return 0
     const [h, m] = t.split(':').map(Number)
     return h * 60 + (m || 0)
   }
@@ -67,7 +67,6 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { activity, latitude, longitude, availableFrom, availableUntil } = body
 
-    // Get current user profile
     const { data: currentUser } = await supabase
       .from('profiles')
       .select('*')
@@ -78,27 +77,34 @@ export async function POST(request: Request) {
 
     const userLat = latitude || currentUser.latitude
     const userLng = longitude || currentUser.longitude
+
+    if (!userLat || !userLng) {
+      return NextResponse.json({
+        error: 'Please enable location to find matches near you'
+      }, { status: 400 })
+    }
+
     const userFrom = availableFrom || currentUser.available_from || '00:00'
     const userUntil = availableUntil || currentUser.available_until || '23:59'
 
-    // Get all potential matches
-    // Must have same activity and location
     const today = new Date().toISOString().split('T')[0]
 
-const { data: candidates } = await supabase
-  .from('profiles')
-  .select('*')
-  .neq('id', user.id)
-  .contains('activities', [activity])
-  .eq('is_available', true)
-  .not('latitude', 'is', null)
-  .not('longitude', 'is', null)
+    const { data: candidates } = await supabase
+      .from('profiles')
+      .select('*')
+      .neq('id', user.id)
+      .contains('activities', [activity])
+      .eq('is_available', true)
+      .eq('available_date', today)
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null)
 
     if (!candidates || candidates.length === 0) {
-      return NextResponse.json({ error: 'No matches found nearby' }, { status: 404 })
+      return NextResponse.json({
+        error: 'No one nearby has scheduled this activity for today. Check back later or try a different activity.'
+      }, { status: 404 })
     }
 
-    // Score each candidate
     const scored = candidates
       .map(candidate => {
         const distance = calculateDistance(
@@ -106,7 +112,6 @@ const { data: candidates } = await supabase
           candidate.latitude, candidate.longitude
         )
 
-        // Exclude anyone more than 10km away
         if (distance > 10) return null
 
         const distanceScore = getDistanceScore(distance)
@@ -119,10 +124,7 @@ const { data: candidates } = await supabase
         )
         const timeScore = getTimeScore(overlapMins)
         const ratingScore = getRatingScore(candidate.rating || 5)
-
-        // Activity must match — already filtered above
         const activityScore = 35
-
         const totalScore = distanceScore + activityScore + timeScore + ratingScore
 
         return {
@@ -139,76 +141,66 @@ const { data: candidates } = await supabase
       })
       .filter(Boolean)
       .sort((a: any, b: any) => b.totalScore - a.totalScore)
-      .slice(0, 5) // Top 5 matches
+      .slice(0, 5)
 
     if (scored.length === 0) {
-      return NextResponse.json({ error: 'No matches found within 10km' }, { status: 404 })
+      return NextResponse.json({
+        error: 'No matches found within 10km. Try again later.'
+      }, { status: 404 })
     }
 
-    // Send to Claude for reasoning
-    const bestMatch = scored[0] as any
+    // Generate reasoning for ALL matches
+    const allMatchesWithReasoning = await Promise.all(
+      scored.map(async (s: any) => {
+        const prompt = `You are Strolly's AI matching engine.
 
-    const prompt = `You are Strolly's AI matching engine.
+THE PERSON YOU MATCHED IS CALLED: ${s.full_name}
+DO NOT use any other name. Only use: ${s.full_name}
 
-User wants to: ${activity.replace(/_/g, ' ')}
-User location: ${userLat}, ${userLng}
-User available: ${userFrom} - ${userUntil}
+Activity: ${activity.replace(/_/g, ' ')}
+Distance: ${s.distanceLabel}
+Time overlap: ${s.overlapMins} minutes
+Rating: ${s.rating || 5}/5
+Sessions: ${s.session_count || 0}
 
-Best match found:
-- Name: ${bestMatch.full_name}
-- Distance: ${bestMatch.distanceLabel}
-- Activity: ${activity.replace(/_/g, ' ')} (exact match)
-- Available: ${bestMatch.available_from || 'flexible'} - ${bestMatch.available_until || 'flexible'}
-- Time overlap: ${bestMatch.overlapMins} minutes
-- Rating: ${bestMatch.rating || 5}/5 from ${bestMatch.session_count || 0} sessions
-- Experience: ${bestMatch.experience_level || 'not specified'}
-- Match score: ${bestMatch.totalScore}/110
+Write 2 sentences max about why ${s.full_name} is a great match.
+Use the name ${s.full_name} naturally in your response.
+No markdown formatting. No bullet points. No asterisks.`
 
-Score breakdown:
-- Distance: ${bestMatch.distanceScore}/40
-- Activity: ${bestMatch.activityScore}/35
-- Time overlap: ${bestMatch.timeScore}/25
-- Rating bonus: ${bestMatch.ratingScore}/10
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 150,
+          messages: [{ role: 'user', content: prompt }],
+        })
 
-Write a SHORT 2-3 sentence explanation of why this is a great match.
-Be specific about the distance, time overlap and shared activity.
-Sound friendly and encouraging. Do not use bullet points.`
-
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 150,
-      messages: [{ role: 'user', content: prompt }],
-    })
-
-    const reasoning = (response.content[0] as any).text
-
-    return NextResponse.json({
-      match: {
-        id: bestMatch.id,
-        name: bestMatch.full_name,
-        avatar: bestMatch.avatar_url,
-        activity,
-        distanceLabel: bestMatch.distanceLabel,
-        distance: bestMatch.distance,
-        score: bestMatch.totalScore,
-        maxScore: 110,
-        scorePercent: Math.round((bestMatch.totalScore / 110) * 100),
-        distanceScore: bestMatch.distanceScore,
-        activityScore: bestMatch.activityScore,
-        timeScore: bestMatch.timeScore,
-        ratingScore: bestMatch.ratingScore,
-        overlapMins: bestMatch.overlapMins,
-        rating: bestMatch.rating || 5,
-        sessionCount: bestMatch.session_count || 0,
-        reasoning,
-        allMatches: scored.map((s: any) => ({
+        return {
           id: s.id,
           name: s.full_name,
           avatar: s.avatar_url,
+          activity,
           score: s.totalScore,
+          maxScore: 110,
           scorePercent: Math.round((s.totalScore / 110) * 100),
           distanceLabel: s.distanceLabel,
-        })),
+          distance: s.distance,
+          distanceScore: s.distanceScore,
+          activityScore: s.activityScore,
+          timeScore: s.timeScore,
+          ratingScore: s.ratingScore,
+          overlapMins: s.overlapMins,
+          rating: s.rating || 5,
+          sessionCount: s.session_count || 0,
+          reasoning: (response.content[0] as any).text,
+        }
+      })
+    )
+
+    const bestMatch = allMatchesWithReasoning[0]
+
+    return NextResponse.json({
+      match: {
+        ...bestMatch,
+        allMatches: allMatchesWithReasoning,
       }
     })
 
