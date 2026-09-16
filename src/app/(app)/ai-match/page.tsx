@@ -7,17 +7,15 @@ import { useLocation } from '@/hooks/useLocation'
 import BottomNav from '@/components/BottomNav'
 
 const activities = [
-
   { id: 'gym', label: 'Gym', icon: '🏋️' },
   { id: 'jogging', label: 'Jogging', icon: '🏃' },
   { id: 'cycling', label: 'Cycling', icon: '🚴' },
   { id: 'football', label: 'Football', icon: '⚽' },
   { id: 'yoga', label: 'Yoga', icon: '🧘' },
-  { id: 'swimming', label: 'Swimming', icon: ' 🏊🏾‍♀️' },
+  { id: 'swimming', label: 'Swimming', icon: '🏊' },
   { id: 'dog_walk', label: 'Dog walk', icon: '🐕' },
   { id: 'badminton', label: 'Badminton', icon: '🏸' },
   { id: 'tennis', label: 'Tennis', icon: '🎾' },
-  { id: 'golfing', label: 'Golfing', icon: '🏌🏿‍♂️' },
 ]
 
 export default function AIMatchPage() {
@@ -105,15 +103,14 @@ export default function AIMatchPage() {
   }
 
   function skipMatch() {
-  if (currentMatchIndex < matches.length - 1) {
-    const nextIndex = currentMatchIndex + 1
-    setCurrentMatchIndex(nextIndex)
-    const next = matches[nextIndex]
-    setMatch(next)
-  } else {
-    setStep('pick')
+    if (currentMatchIndex < matches.length - 1) {
+      const nextIndex = currentMatchIndex + 1
+      setCurrentMatchIndex(nextIndex)
+      setMatch(matches[nextIndex])
+    } else {
+      setStep('pick')
+    }
   }
-}
 
   const displayActivities = userActivities.length > 0
     ? activities.filter(a => userActivities.includes(a.id))
@@ -180,7 +177,6 @@ export default function AIMatchPage() {
           {/* Signature black card */}
           <div style={{ background: '#1a1a1a', borderRadius: '20px', padding: '20px 20px 16px', marginBottom: '14px', position: 'relative', overflow: 'hidden', minHeight: '130px' }}>
 
-            {/* Scanning — animated rings */}
             {step === 'scanning' && (
               <div style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', width: '64px', height: '64px' }}>
                 <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', animation: 'ping1 1.5s ease-out infinite' }} />
@@ -192,7 +188,6 @@ export default function AIMatchPage() {
               </div>
             )}
 
-            {/* Pick — static lime circle */}
             {step === 'pick' && (
               <div style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', width: '64px', height: '64px', borderRadius: '50%', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
                 ✨
@@ -225,7 +220,6 @@ export default function AIMatchPage() {
               </div>
             )}
 
-            {/* Animated dots */}
             <div style={{ display: 'flex', gap: '5px' }}>
               {[0, 1, 2].map(i => (
                 <div key={i} style={{
@@ -265,18 +259,37 @@ export default function AIMatchPage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
-              {match.avatar ? (
-                <img src={match.avatar} alt={match.name} style={{ width: '64px', height: '64px', borderRadius: '18px', objectFit: 'cover', border: '3px solid #CAFF00' }} />
-              ) : (
-                <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: '#0d0d0d' }}>
-                  {match.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-              )}
+
+              {/* Clickable avatar */}
+              <div
+                onClick={() => router.push('/user/' + match.id)}
+                style={{ flexShrink: 0, cursor: 'pointer', position: 'relative' }}
+              >
+                {match.avatar ? (
+                  <img
+                    src={match.avatar}
+                    alt={match.name}
+                    style={{ width: '64px', height: '64px', borderRadius: '18px', objectFit: 'cover', border: '3px solid #CAFF00', display: 'block' }}
+                  />
+                ) : (
+                  <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: '#0d0d0d' }}>
+                    {match.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </div>
+
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>{match.name}</div>
+                {/* Clickable name */}
+                <div
+                  onClick={() => router.push('/user/' + match.id)}
+                  style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px', cursor: 'pointer' }}
+                >
+                  {match.name}
+                </div>
                 <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>📍 {match.distanceLabel}</div>
                 <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>⭐ {match.rating}/5 · {match.sessionCount} sessions</div>
               </div>
+
               <div style={{ textAlign: 'center', flexShrink: 0 }}>
                 <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#CAFF00', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ fontSize: '18px', fontWeight: 900, color: '#0d0d0d', lineHeight: 1 }}>{match.scorePercent}</div>
@@ -309,6 +322,11 @@ export default function AIMatchPage() {
               "{match.reasoning}"
             </div>
 
+            {/* View profile hint */}
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginBottom: '14px' }}>
+              + Tap photo or name to view full profile
+            </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 onClick={() => router.push('/chat/' + match.id)}
@@ -333,12 +351,10 @@ export default function AIMatchPage() {
         </div>
       )}
 
-      {/* Error — animated */}
+      {/* Error */}
       {step === 'error' && (
         <div style={{ padding: '0 24px', maxWidth: '480px', margin: '0 auto' }}>
           <div style={{ background: '#1a1a1a', borderRadius: '20px', padding: '28px 24px', position: 'relative', overflow: 'hidden' }}>
-
-            {/* Animated ✨ star on the right */}
             <div style={{ position: 'absolute', right: '20px', top: '24px', width: '56px', height: '56px' }}>
               <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', opacity: 0.3, animation: 'errorPulse 2s ease-out infinite' }} />
               <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#CAFF00', opacity: 0.2, animation: 'errorPulse 2s ease-out infinite 0.4s' }} />
@@ -351,9 +367,8 @@ export default function AIMatchPage() {
               Strolly AI
             </div>
 
-            {/* Sad face bouncing */}
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '40px', animation: 'sadBounce 2s ease-in-out infinite', display: 'inline-block' }}>
+              <div style={{ fontSize: '52px', animation: 'sadBounce 2s ease-in-out infinite', display: 'inline-block' }}>
                 😔
               </div>
             </div>

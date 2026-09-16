@@ -17,6 +17,7 @@ interface Profile {
   available_from: string
   available_until: string
   available_date: string
+  available_duration: string
   rating: number
   session_count: number
   latitude: number
@@ -137,79 +138,149 @@ export default function NearbyPage() {
     isPrimary: boolean
   ) {
     return (
-      <div style={{ background: '#0d0d0d', borderRadius: '24px', padding: '24px', marginBottom: '12px' }}>
+      <div style={{
+        background: isPrimary ? '#0d0d0d' : '#ffffff',
+        borderRadius: '24px',
+        padding: '20px',
+        marginBottom: '12px',
+        border: isPrimary ? 'none' : '1.5px solid #CAFF00',
+      }}>
 
         {/* Label */}
-        <div style={{ fontSize: '10px', fontWeight: 800, color: '#CAFF00', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '16px' }}>
+        <div style={{ fontSize: '10px', fontWeight: 800, color: isPrimary ? '#CAFF00' : '#0d0d0d', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '14px' }}>
           {isPrimary
             ? `${activityIcons[selectedActivity] || '🏃'} ${activityLabels[selectedActivity] || selectedActivity} · ${index + 1} of ${total}`
             : `✦ Other activity · ${index + 1} of ${total}`
           }
         </div>
 
-        {/* User */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
-          {user.avatar_url ? (
-            <img src={user.avatar_url} alt={user.full_name} style={{ width: '64px', height: '64px', borderRadius: '18px', objectFit: 'cover', border: '3px solid #CAFF00', flexShrink: 0 }} />
-          ) : (
-            <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: '#0d0d0d', flexShrink: 0 }}>
-              {getInitials(user.full_name)}
+        {/* User row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+
+          {/* Clickable avatar */}
+          <div
+            onClick={() => router.push('/user/' + user.id)}
+            style={{ flexShrink: 0, cursor: 'pointer', position: 'relative' }}
+          >
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.full_name}
+                style={{ width: '54px', height: '54px', borderRadius: '14px', objectFit: 'cover', border: `2.5px solid ${isPrimary ? '#CAFF00' : '#0d0d0d'}`, display: 'block' }}
+              />
+            ) : (
+              <div style={{ width: '54px', height: '54px', borderRadius: '14px', background: isPrimary ? '#CAFF00' : '#0d0d0d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 800, color: isPrimary ? '#0d0d0d' : '#CAFF00' }}>
+                {getInitials(user.full_name)}
+              </div>
+            )}
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Clickable name */}
+            <div
+              onClick={() => router.push('/user/' + user.id)}
+              style={{ fontSize: '16px', fontWeight: 800, color: isPrimary ? '#ffffff' : '#0d0d0d', letterSpacing: '-0.3px', cursor: 'pointer' }}
+            >
+              {user.full_name}
             </div>
-          )}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>{user.full_name}</div>
-            {distLabel && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>📍 {distLabel}</div>}
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
-              ⭐ {user.rating || 5} · {user.session_count || 0} sessions
+            <div style={{ display: 'flex', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+              {distLabel && (
+                <span style={{ fontSize: '11px', color: isPrimary ? 'rgba(255,255,255,0.5)' : '#5a5a5a' }}>📍 {distLabel}</span>
+              )}
+              <span style={{ fontSize: '11px', color: isPrimary ? 'rgba(255,255,255,0.5)' : '#5a5a5a' }}>
+                ⭐ {user.rating || 5} · {user.session_count || 0} sessions
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Details */}
-        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Activity</div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: isPrimary ? '#CAFF00' : '#ffffff' }}>
-              {activityIcons[user.current_activity] || '🏃'} {activityLabels[user.current_activity] || user.current_activity?.replace(/_/g, ' ')}
+        {/* Details grid */}
+        <div style={{ background: isPrimary ? 'rgba(255,255,255,0.06)' : '#f5f5f0', borderRadius: '12px', padding: '12px', marginBottom: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div>
+              <div style={{ fontSize: '10px', color: isPrimary ? 'rgba(255,255,255,0.35)' : '#5a5a5a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>Activity</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: isPrimary ? '#CAFF00' : '#0d0d0d' }}>
+                {activityIcons[user.current_activity] || '🏃'} {activityLabels[user.current_activity] || user.current_activity?.replace(/_/g, ' ')}
+              </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: user.experience_level ? '8px' : '0' }}>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Available</div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>{user.available_from} – {user.available_until}</div>
-          </div>
-          {user.experience_level && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Level</div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', textTransform: 'capitalize' }}>{user.experience_level}</div>
+            <div>
+              <div style={{ fontSize: '10px', color: isPrimary ? 'rgba(255,255,255,0.35)' : '#5a5a5a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>Available</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: isPrimary ? '#ffffff' : '#0d0d0d' }}>
+                {user.available_from} – {user.available_until}
+              </div>
             </div>
-          )}
+            {user.available_duration && (
+              <div>
+                <div style={{ fontSize: '10px', color: isPrimary ? 'rgba(255,255,255,0.35)' : '#5a5a5a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>Duration</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: isPrimary ? '#ffffff' : '#0d0d0d' }}>
+                  {user.available_duration}
+                </div>
+              </div>
+            )}
+            {user.experience_level && (
+              <div>
+                <div style={{ fontSize: '10px', color: isPrimary ? 'rgba(255,255,255,0.35)' : '#5a5a5a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>Level</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: isPrimary ? '#ffffff' : '#0d0d0d', textTransform: 'capitalize' }}>
+                  {user.experience_level}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Buttons */}
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={onAccept}
-            style={{ flex: 1, padding: '14px', background: '#CAFF00', color: '#0d0d0d', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}
-          >
-            Say hello →
-          </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
           {total > 1 && (
             <button
               onClick={onSkip}
-              style={{ padding: '14px 20px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: 'none', borderRadius: '14px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+              style={{
+                padding: '8px 16px',
+                background: isPrimary ? 'rgba(255,255,255,0.08)' : '#f5f5f0',
+                color: isPrimary ? 'rgba(255,255,255,0.7)' : '#5a5a5a',
+                border: isPrimary ? 'none' : '1px solid #e2e2d8',
+                borderRadius: '10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
             >
               Skip
             </button>
           )}
+          <button
+            onClick={onAccept}
+            style={{
+              padding: '8px 18px',
+              background: isPrimary ? '#CAFF00' : '#0d0d0d',
+              color: isPrimary ? '#0d0d0d' : '#CAFF00',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Say hello →
+          </button>
         </div>
 
         {/* Dot indicators */}
         {total > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', marginTop: '12px' }}>
             {Array.from({ length: total }).map((_, i) => (
               <div
                 key={i}
-                style={{ width: i === index ? '20px' : '8px', height: '8px', borderRadius: '4px', background: i === index ? '#CAFF00' : 'rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'all 0.2s' }}
+                onClick={() => isPrimary ? setPrimaryIndex(i) : setOtherIndex(i)}
+                style={{
+                  width: i === index ? '18px' : '6px',
+                  height: '6px',
+                  borderRadius: '3px',
+                  background: isPrimary
+                    ? (i === index ? '#CAFF00' : 'rgba(255,255,255,0.2)')
+                    : (i === index ? '#0d0d0d' : '#e2e2d8'),
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
               />
             ))}
           </div>
@@ -223,7 +294,7 @@ export default function NearbyPage() {
 
       {/* Header */}
       <div style={{ padding: '52px 24px 16px', background: '#ffffff', borderBottom: '1px solid #e2e2d8' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
           <button
             onClick={() => router.back()}
             style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f5f5f0', border: 'none', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -232,11 +303,26 @@ export default function NearbyPage() {
           </button>
           <div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: '#0d0d0d', letterSpacing: '-0.5px' }}>Nearby matches</div>
-            <div style={{ fontSize: '13px', color: '#5a5a5a', marginTop: '2px' }}>People available today near you</div>
+            <div style={{ fontSize: '13px', color: '#5a5a5a', marginTop: '2px' }}>
+              {activityParam
+                ? `Looking for ${activityLabels[activityParam]} partners today`
+                : 'People available today near you'
+              }
+            </div>
           </div>
         </div>
 
-        {/* Activity filter tabs — only show activities with people */}
+        {/* Selected activity badge */}
+        {activityParam && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', color: '#5a5a5a' }}>You scheduled:</div>
+            <div style={{ padding: '4px 12px', background: '#0d0d0d', color: '#CAFF00', borderRadius: '100px', fontSize: '12px', fontWeight: 700 }}>
+              {activityIcons[activityParam]} {activityLabels[activityParam]} · {primaryUsers.length} available
+            </div>
+          </div>
+        )}
+
+        {/* Activity filter tabs */}
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
           <button
             onClick={() => handleActivityFilter('all')}
@@ -244,7 +330,20 @@ export default function NearbyPage() {
           >
             All ({allUsers.length})
           </button>
+
+          {/* Always show selected activity first */}
+          {activityParam && (
+            <button
+              onClick={() => handleActivityFilter(activityParam)}
+              style={{ flexShrink: 0, padding: '7px 14px', background: selectedActivity === activityParam ? '#0d0d0d' : '#f5f5f0', color: selectedActivity === activityParam ? '#CAFF00' : '#0d0d0d', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              {activityIcons[activityParam]} {activityLabels[activityParam]} ({primaryUsers.length})
+            </button>
+          )}
+
+          {/* Other activities with people */}
           {Object.entries(activityLabels).map(([key, label]) => {
+            if (key === activityParam) return null
             const count = allUsers.filter(u => u.current_activity === key).length
             if (count === 0) return null
             return (
@@ -265,17 +364,16 @@ export default function NearbyPage() {
         {/* AI Match banner */}
         <div
           onClick={() => router.push('/ai-match')}
-          style={{ background: '#0d0d0d', borderRadius: '20px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', marginBottom: '16px', position: 'relative', overflow: 'hidden' }}
+          style={{ background: '#0d0d0d', borderRadius: '18px', padding: '13px 16px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', marginBottom: '14px', position: 'relative', overflow: 'hidden' }}
         >
-          <div style={{ position: 'absolute', right: '-10px', top: '-10px', width: '80px', height: '80px', borderRadius: '50%', background: '#CAFF00', opacity: 0.15 }} />
-          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>✨</div>
+          <div style={{ position: 'absolute', right: '-10px', top: '-10px', width: '70px', height: '70px', borderRadius: '50%', background: '#CAFF00', opacity: 0.12 }} />
+          <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#CAFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>✨</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, color: '#CAFF00', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '2px' }}>AI Instant Match</div>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#CAFF00', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '1px' }}>AI Instant Match</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>Let Strolly AI pick your best match</div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Strolly AI ranks by distance, activity and time</div>
           </div>
-          <div style={{ background: '#CAFF00', borderRadius: '100px', padding: '7px 12px', fontSize: '12px', fontWeight: 700, color: '#0d0d0d', flexShrink: 0 }}>
-            Match me →
+          <div style={{ background: '#CAFF00', borderRadius: '100px', padding: '6px 12px', fontSize: '11px', fontWeight: 700, color: '#0d0d0d', flexShrink: 0 }}>
+            Match →
           </div>
         </div>
 
@@ -285,25 +383,47 @@ export default function NearbyPage() {
           </div>
         )}
 
+        {/* No one at all */}
         {!loading && allUsers.length === 0 && (
           <div style={{ background: '#ffffff', borderRadius: '20px', padding: '40px 24px', textAlign: 'center', border: '1.5px solid #e2e2d8' }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
             <div style={{ fontSize: '18px', fontWeight: 800, color: '#0d0d0d', marginBottom: '8px' }}>No one nearby yet</div>
             <div style={{ fontSize: '14px', color: '#5a5a5a', lineHeight: 1.6, marginBottom: '24px' }}>
-              No one has scheduled an activity for today yet. Share the app!
+              No one has scheduled an activity for today yet.
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              <button onClick={() => router.push('/schedule')} style={{ padding: '10px 20px', background: '#ffffff', color: '#0d0d0d', border: '1.5px solid #e2e2d8', borderRadius: '100px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                ← Change time
+              </button>
+              <button onClick={() => router.push('/home')} style={{ padding: '10px 20px', background: '#0d0d0d', color: '#CAFF00', border: 'none', borderRadius: '100px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                Home
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* No primary matches for selected activity */}
+        {!loading && allUsers.length > 0 && primaryUsers.length === 0 && selectedActivity !== 'all' && (
+          <div style={{ background: '#0d0d0d', borderRadius: '20px', padding: '24px 20px', marginBottom: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '36px', marginBottom: '10px' }}>{activityIcons[selectedActivity] || '🏃'}</div>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: '#ffffff', marginBottom: '6px' }}>
+              Nobody doing {activityLabels[selectedActivity]} today
+            </div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginBottom: '18px', lineHeight: 1.6 }}>
+              No one has scheduled {activityLabels[selectedActivity]?.toLowerCase()} for today yet. Others are available below 👇
             </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
               <button
                 onClick={() => router.push('/schedule')}
-                style={{ padding: '10px 20px', background: '#ffffff', color: '#0d0d0d', border: '1.5px solid #e2e2d8', borderRadius: '100px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '8px 14px', background: 'rgba(255,255,255,0.1)', color: '#ffffff', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
               >
-                ← Change time
+                ← Change activity
               </button>
               <button
-                onClick={() => router.push('/home')}
-                style={{ padding: '10px 20px', background: '#0d0d0d', color: '#CAFF00', border: 'none', borderRadius: '100px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+                onClick={() => router.push('/ai-match')}
+                style={{ padding: '8px 14px', background: '#CAFF00', color: '#0d0d0d', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
               >
-                Home
+                ✨ AI Match
               </button>
             </div>
           </div>
@@ -320,25 +440,13 @@ export default function NearbyPage() {
           true
         )}
 
-        {/* No primary but show message */}
-        {!loading && primaryUsers.length === 0 && allUsers.length > 0 && selectedActivity !== 'all' && (
-          <div style={{ background: '#fff8e1', borderRadius: '16px', padding: '14px 18px', border: '1.5px solid #ffe082', marginBottom: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0d0d0d', marginBottom: '4px' }}>
-              Nobody doing {activityLabels[selectedActivity]} today
-            </div>
-            <div style={{ fontSize: '12px', color: '#5a5a5a' }}>
-              But these people are available for other activities 👇
-            </div>
-          </div>
-        )}
-
-        {/* Other activities card */}
+        {/* Other activities separator + card */}
         {!loading && currentOther && selectedActivity !== 'all' && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '8px 0 12px' }}>
               <div style={{ flex: 1, height: '1px', background: '#e2e2d8' }} />
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                Other activities
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                Other activities available
               </div>
               <div style={{ flex: 1, height: '1px', background: '#e2e2d8' }} />
             </div>

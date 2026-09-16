@@ -89,11 +89,12 @@ export async function POST(request: Request) {
 
     const today = new Date().toISOString().split('T')[0]
 
+    // Only match people who specifically scheduled THIS activity today
     const { data: candidates } = await supabase
       .from('profiles')
       .select('*')
       .neq('id', user.id)
-      .contains('activities', [activity])
+      .eq('current_activity', activity)
       .eq('is_available', true)
       .eq('available_date', today)
       .not('latitude', 'is', null)
@@ -101,7 +102,9 @@ export async function POST(request: Request) {
 
     if (!candidates || candidates.length === 0) {
       return NextResponse.json({
-        error: 'No one nearby has scheduled this activity for today. Check back later or try a different activity.'
+        error: `Nobody has scheduled ${activity.replace(/_/g, ' ')} for today. Check back later or try a different activity.
+                 you can as well use the scheduled feature to see other similar activites in your selected activty list`
+
       }, { status: 404 })
     }
 
