@@ -22,6 +22,12 @@ export default async function HomePage() {
 
   const name = user.user_metadata?.full_name ?? user.email ?? 'there'
   const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+// added to fix notificstion issues 
+  const { count: unreadCount } = await supabase
+  .from('notifications')
+  .select('*', { count: 'exact', head: true })
+  .eq('user_id', user.id)
+  .eq('is_read', false)
 
   const { data: convs } = await supabase
     .from('conversations')
@@ -98,7 +104,9 @@ export default async function HomePage() {
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <a href="/notifications" style={{ position: 'relative', width: '36px', height: '36px', borderRadius: '50%', background: '#ffffff', border: '1.5px solid #e2e2d8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', textDecoration: 'none' }}>
               🔔
-              <div style={{ position: 'absolute', top: '0', right: '0', width: '8px', height: '8px', borderRadius: '50%', background: '#ff3b30', border: '2px solid #f5f5f0' }} />
+              {(unreadCount || 0) > 0 && (
+          <div style={{ position: 'absolute', top: '0', right: '0', width: '8px', height: '8px', borderRadius: '50%', background: '#ff3b30', border: '2px solid #f5f5f0' }} />
+)}
             </a>
             <form action={signOut}>
               <button type="submit" style={{ padding: '8px 16px', background: 'transparent', border: '1.5px solid #e2e2d8', borderRadius: '100px', fontSize: '13px', color: '#5a5a5a', cursor: 'pointer' }}>

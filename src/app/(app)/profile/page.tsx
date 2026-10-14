@@ -223,7 +223,7 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
-
+        
         {/* Fitness profile */}
         <div style={{ background: '#ffffff', borderRadius: '16px', padding: '14px 16px', border: '1px solid #e2e2d8', marginBottom: '12px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a5a5a', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
@@ -295,7 +295,7 @@ export default function ProfilePage() {
             onClick={() => setSelectedPhoto(null)}
             style={{ position: 'absolute', top: '20px', right: '20px', width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            ×
+            
           </button>
           <img
             src={selectedPhoto}

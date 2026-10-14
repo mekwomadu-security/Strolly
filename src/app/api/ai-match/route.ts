@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'          
 
 const anthropic = new Anthropic()
 
