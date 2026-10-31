@@ -89,7 +89,7 @@ export default function SignupForm() {
       justifyContent: 'center',
       padding: '24px',
       fontFamily: 'DM Sans, sans-serif',
-    }}>grep -n "available_date" src/app/\(app\)/schedule/page.tsx
+    }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
 
         {/* Logo */}
