@@ -91,6 +91,7 @@ export default function NearbyPage() {
       .neq('id', user.id)
       .eq('is_available', true)
       .eq('available_date', today)
+      .eq('is_in_session', false)
 
     if (nearby) setAllUsers(nearby)
     setLoading(false)

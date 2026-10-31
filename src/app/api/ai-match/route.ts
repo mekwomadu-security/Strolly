@@ -99,6 +99,7 @@ export async function POST(request: Request) {
       .eq('available_date', today)
       .not('latitude', 'is', null)
       .not('longitude', 'is', null)
+      .eq('is_in_session', false) // the in session button to remove user from search during active session
 
     if (!candidates || candidates.length === 0) {
       return NextResponse.json({

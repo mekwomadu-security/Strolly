@@ -407,7 +407,7 @@ export default function GroupChatPage() {
           >
             {uploading ? '⏳' : '📎'}
           </button>
-
+          
           <textarea
             ref={inputRef}
             value={newMessage}
