@@ -13,10 +13,8 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = await request.json()
-    const { action, receiverId, senderId } = body
+    const { action, receiverId, senderId } = await request.json()
 
-    // ─── SEND a match request ───────────────────────────────────────────────
     if (action === 'send') {
       const { data: existing } = await supabase
         .from('match_requests')
@@ -25,9 +23,7 @@ export async function POST(request: Request) {
         .eq('receiver_id', receiverId)
         .single()
 
-      if (existing) {
-        return NextResponse.json({ status: existing.status })
-      }
+      if (existing) return NextResponse.json({ status: existing.status })
 
       const { error } = await supabase
         .from('match_requests')
@@ -55,7 +51,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ status: 'pending' })
     }
 
-    // ─── ACCEPT ─────────────────────────────────────────────────────────────
     if (action === 'accept') {
       await supabase
         .from('match_requests')
@@ -81,7 +76,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ status: 'accepted' })
     }
 
-    // ─── DECLINE ─────────────────────────────────────────────────────────────
     if (action === 'decline') {
       await supabase
         .from('match_requests')
