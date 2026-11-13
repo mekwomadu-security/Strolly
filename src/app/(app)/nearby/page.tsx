@@ -65,6 +65,7 @@ function NearbyContent() {
   const [primaryIndex, setPrimaryIndex] = useState(0)
   const [otherIndex, setOtherIndex] = useState(0)
   const [selectedActivity, setSelectedActivity] = useState(activityParam || 'all')
+  const [sentRequests, setSentRequests] = useState<Record<string, 'pending' | 'sending'>>({})
 
   useEffect(() => {
     fetchNearbyUsers()
@@ -94,7 +95,40 @@ function NearbyContent() {
       .eq('is_in_session', false)
 
     if (nearby) setAllUsers(nearby)
+
+    // Load any existing pending requests so buttons show correctly
+    const { data: existing } = await supabase
+      .from('match_requests')
+      .select('receiver_id, status')
+      .eq('sender_id', user.id)
+      .eq('status', 'pending')
+
+    if (existing) {
+      const map: Record<string, 'pending'> = {}
+      existing.forEach(r => { map[r.receiver_id] = 'pending' })
+      setSentRequests(map)
+    }
+
     setLoading(false)
+  }
+
+  async function sendMatchRequest(receiverId: string) {
+    setSentRequests(prev => ({ ...prev, [receiverId]: 'sending' }))
+    try {
+      const res = await fetch('/api/match-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', receiverId }),
+      })
+      const data = await res.json()
+      setSentRequests(prev => ({ ...prev, [receiverId]: data.status || 'pending' }))
+    } catch {
+      setSentRequests(prev => {
+        const next = { ...prev }
+        delete next[receiverId]
+        return next
+      })
+    }
   }
 
   function getInitials(name: string) {
@@ -135,9 +169,12 @@ function NearbyContent() {
     total: number,
     distLabel: string | null,
     onSkip: () => void,
-    onAccept: () => void,
     isPrimary: boolean
   ) {
+    const reqStatus = sentRequests[user.id]
+    const isSending = reqStatus === 'sending'
+    const isSent = reqStatus === 'pending'
+
     return (
       <div style={{
         background: isPrimary ? '#0d0d0d' : '#ffffff',
@@ -242,19 +279,21 @@ function NearbyContent() {
             </button>
           )}
           <button
-            onClick={onAccept}
+            onClick={() => !isSent && !isSending && sendMatchRequest(user.id)}
+            disabled={isSent || isSending}
             style={{
               padding: '8px 18px',
-              background: isPrimary ? '#CAFF00' : '#0d0d0d',
-              color: isPrimary ? '#0d0d0d' : '#CAFF00',
+              background: isSent ? (isPrimary ? 'rgba(202,255,0,0.2)' : '#f0f0ea') : (isPrimary ? '#CAFF00' : '#0d0d0d'),
+              color: isSent ? (isPrimary ? '#CAFF00' : '#5a5a5a') : (isPrimary ? '#0d0d0d' : '#CAFF00'),
               border: 'none',
               borderRadius: '10px',
               fontSize: '12px',
               fontWeight: 700,
-              cursor: 'pointer',
+              cursor: isSent || isSending ? 'default' : 'pointer',
+              opacity: isSending ? 0.6 : 1,
             }}
           >
-            Say hello →
+            {isSending ? 'Sending...' : isSent ? 'Request sent ✓' : 'Say hello →'}
           </button>
         </div>
 
@@ -420,7 +459,6 @@ function NearbyContent() {
           primaryUsers.length,
           primaryDistanceLabel,
           () => setPrimaryIndex(i => i < primaryUsers.length - 1 ? i + 1 : 0),
-          () => router.push('/chat/' + currentPrimary.id),
           true
         )}
 
@@ -440,7 +478,6 @@ function NearbyContent() {
               otherUsers.length,
               otherDistanceLabel,
               () => setOtherIndex(i => i < otherUsers.length - 1 ? i + 1 : 0),
-              () => router.push('/chat/' + currentOther.id),
               false
             )}
           </>
