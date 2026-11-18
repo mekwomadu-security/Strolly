@@ -13,6 +13,7 @@ const ACTIVITIES = [
   { id: 'boxing',        label: 'Boxing',           icon: '🥊', cat: 'Gym & Fitness' },
   { id: 'mma',           label: 'MMA',              icon: '🥋', cat: 'Gym & Fitness' },
   { id: 'jogging',       label: 'Jogging',          icon: '🏃', cat: 'Outdoor' },
+  { id: 'Running',       label: 'Running',          icon: '🏃', cat: 'Outdoor' },
   { id: 'trail_running', label: 'Trail running',    icon: '🌲', cat: 'Outdoor' },
   { id: 'cycling',       label: 'Cycling',          icon: '🚴', cat: 'Outdoor' },
   { id: 'mtb',           label: 'Mountain biking',  icon: '⛰️', cat: 'Outdoor' },
